@@ -3,21 +3,96 @@ package com.nit.expensestracker
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import android.util.Log
 
-// Simple data class to hold our expense sheet info
+// Data class for expense sheet
 data class ExpenseSheet(
     val month: String,
     val year: Int
 )
 
+// TASK 3: LazyList to display all sheets
 @Composable
-fun CreateSheetScreen() {
-    // State for our form fields and list
+fun SheetListScreen(
+    sheets: List<ExpenseSheet>,
+    onSheetClick: (ExpenseSheet) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Header
+        Text(
+            text = "My Expense Sheets",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Check if list is empty
+        if (sheets.isEmpty()) {
+            Text(
+                text = "No sheets yet. Create one to get started!",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            // LazyColumn - scrollable list
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(sheets) { sheet ->
+                    // Each item is a clickable card
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                // For now, just log the click
+                                Log.d("SheetList", "Clicked: ${sheet.month} ${sheet.year}")
+                                onSheetClick(sheet)
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = sheet.month,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = sheet.year.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = "→",
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// TASK 2: Create new sheets (updated to work with LazyList)
+@Composable
+fun CreateSheetScreen(
+    onSheetCreated: (ExpenseSheet) -> Unit
+) {
     var month by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
-    var sheetsList by remember { mutableStateOf(listOf<ExpenseSheet>()) }
 
     Column(
         modifier = Modifier
@@ -30,7 +105,6 @@ fun CreateSheetScreen() {
             style = MaterialTheme.typography.headlineMedium
         )
 
-        // Month input
         TextField(
             value = month,
             onValueChange = { month = it },
@@ -38,7 +112,6 @@ fun CreateSheetScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Year input
         TextField(
             value = year,
             onValueChange = { year = it },
@@ -46,18 +119,15 @@ fun CreateSheetScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Create button
         Button(
             onClick = {
-                // Basic validation
                 if (month.isNotBlank() && year.isNotBlank()) {
                     val yearInt = year.toIntOrNull()
                     if (yearInt != null) {
-                        // Add the new sheet to our list
                         val newSheet = ExpenseSheet(month, yearInt)
-                        sheetsList = sheetsList + newSheet
+                        onSheetCreated(newSheet)
 
-                        // Clear the form
+                        // Clear inputs
                         month = ""
                         year = ""
                     }
@@ -66,27 +136,6 @@ fun CreateSheetScreen() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Create Sheet")
-        }
-
-        // Show the list of created sheets
-        if (sheetsList.isNotEmpty()) {
-            Text(
-                text = "Your Sheets:",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            sheetsList.forEach { sheet ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "${sheet.month} ${sheet.year}",
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
         }
     }
 }

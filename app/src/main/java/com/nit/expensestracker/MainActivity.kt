@@ -3,27 +3,22 @@ package com.nit.expensestracker
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.nit.expensestracker.ui.theme.ExpensesTrackerTheme
+import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            ExpensesTrackerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    ExpensesTrackerApp()
                 }
             }
         }
@@ -31,17 +26,39 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun ExpensesTrackerApp() {
+    // Step 17: Shared state for all sheets
+    var sheetsList by remember { mutableStateOf(listOf<ExpenseSheet>()) }
+    var showCreateScreen by remember { mutableStateOf(false) }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ExpensesTrackerTheme {
-        Greeting("Android")
+    if (showCreateScreen) {
+        // Show create screen
+        CreateSheetScreen(
+            onSheetCreated = { newSheet ->
+                sheetsList = sheetsList + newSheet
+                showCreateScreen = false
+            }
+        )
+    } else {
+        // Show list screen with FAB
+        Box(modifier = Modifier.fillMaxSize()) {
+            SheetListScreen(
+                sheets = sheetsList,
+                onSheetClick = { sheet ->
+                    // Will be implemented in Task 4
+                    // For now just logs to console
+                }
+            )
+
+            // Floating action button to create new sheet
+            FloatingActionButton(
+                onClick = { showCreateScreen = true },
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(androidx.compose.ui.Alignment.BottomEnd)
+            ) {
+                Text("+", style = MaterialTheme.typography.headlineMedium)
+            }
+        }
     }
 }
