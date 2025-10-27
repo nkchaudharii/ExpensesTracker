@@ -7,13 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
+                // Using Surface container for the app
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -27,38 +27,62 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ExpensesTrackerApp() {
-    // Step 17: Shared state for all sheets
-    var sheetsList by remember { mutableStateOf(listOf<ExpenseSheet>()) }
-    var showCreateScreen by remember { mutableStateOf(false) }
+    // State variable to hold all expense sheets
+    var allSheets by remember { mutableStateOf<List<ExpenseSheet>>(emptyList()) }
 
-    if (showCreateScreen) {
-        // Show create screen
-        CreateSheetScreen(
-            onSheetCreated = { newSheet ->
-                sheetsList = sheetsList + newSheet
-                showCreateScreen = false
-            }
-        )
-    } else {
-        // Show list screen with FAB
-        Box(modifier = Modifier.fillMaxSize()) {
+    // State variable to track which screen to show
+    var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.List) }
+
+    // Decide which screen to display based on current state
+    when (val screen = currentScreen) {
+        // Show list of all sheets
+        is AppScreen.List -> {
             SheetListScreen(
-                sheets = sheetsList,
-                onSheetClick = { sheet ->
-                    // Will be implemented in Task 4
-                    // For now just logs to console
+                sheets = allSheets,
+                onSheetClick = { clickedSheet ->
+                    // Navigate to detail screen when sheet is clicked
+                    currentScreen = AppScreen.Detail(clickedSheet)
+                },
+                onCreateClick = {
+                    // Navigate to create screen when FAB is clicked
+                    currentScreen = AppScreen.Create
                 }
             )
+        }
 
-            // Floating action button to create new sheet
-            FloatingActionButton(
-                onClick = { showCreateScreen = true },
-                modifier = Modifier
-                    .padding(16.dp)
-                    .align(androidx.compose.ui.Alignment.BottomEnd)
-            ) {
-                Text("+", style = MaterialTheme.typography.headlineMedium)
-            }
+        // Show form to create new sheet
+        is AppScreen.Create -> {
+            CreateSheetScreen(
+                onSheetCreated = { newSheet ->
+                    // Add new sheet to the list
+                    allSheets = allSheets + newSheet
+                    // Go back to list screen
+                    currentScreen = AppScreen.List
+                },
+                onBackClick = {
+                    // Cancel and go back to list screen
+                    currentScreen = AppScreen.List
+                }
+            )
+        }
+
+        // Show details of a specific sheet
+        is AppScreen.Detail -> {
+            MonthDetailScreen(
+                sheet = screen.sheet,
+                onBackClick = {
+                    // Go back to list screen
+                    currentScreen = AppScreen.List
+                }
+            )
         }
     }
+}
+
+// Sealed class to represent different screens in the app
+// This helps with type-safe navigation
+sealed class AppScreen {
+    object List : AppScreen()  // List of all sheets
+    object Create : AppScreen()  // Create new sheet form
+    data class Detail(val sheet: ExpenseSheet) : AppScreen()  // Details of one sheet
 }
