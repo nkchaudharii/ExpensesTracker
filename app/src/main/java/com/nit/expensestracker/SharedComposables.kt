@@ -27,6 +27,7 @@ data class ExpenseSheet(
     val id: Int,
     val month: Int,
     val year: Int,
+    val income: Double = 0.0,
     val expenses: List<Expense> = emptyList()
 ) {
     // Calculate month name from month number
@@ -341,8 +342,19 @@ fun MonthDropdown(
 @Composable
 fun MonthDetailScreen(
     sheet: ExpenseSheet,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onIncomeUpdated: (Double) -> Unit,
+    onExpenseAdded: (String, Double, String) -> Unit
 ) {
+    // State to track if user is editing income
+    var isEditingIncome by remember { mutableStateOf(false) }
+    // State to hold the income input value
+    var incomeInput by remember { mutableStateOf(sheet.income.toString()) }
+    // State to hold error message for income validation
+    var incomeError by remember { mutableStateOf("") }
+    // State to control showing the add expense dialog
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -356,6 +368,11 @@ fun MonthDetailScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddExpenseDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add expense")
+            }
         }
     ) { paddingValues ->
         Column(
@@ -363,11 +380,138 @@ fun MonthDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Summary card showing total
+            // Income card - shows income with edit functionality
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        text = "Monthly Income",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Check if user is in edit mode or view mode
+                    if (isEditingIncome) {
+                        // Edit mode - show TextField for user to input new income
+                        OutlinedTextField(
+                            value = incomeInput,
+                            onValueChange = { newValue ->
+                                incomeInput = newValue
+                                incomeError = ""
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Enter income amount") },
+                            placeholder = { Text("0.00") },
+                            singleLine = true,
+                            isError = incomeError.isNotEmpty()
+                        )
+
+                        // Show error message if validation fails
+                        if (incomeError.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = incomeError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Buttons row for Save and Cancel
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Save button
+                            Button(
+                                onClick = {
+                                    // Validate the input
+                                    val newIncome = incomeInput.toDoubleOrNull()
+
+                                    if (incomeInput.isEmpty()) {
+                                        incomeError = "Income cannot be empty"
+                                        return@Button
+                                    }
+
+                                    if (newIncome == null) {
+                                        incomeError = "Please enter a valid number"
+                                        return@Button
+                                    }
+
+                                    if (newIncome < 0) {
+                                        incomeError = "Income cannot be negative"
+                                        return@Button
+                                    }
+
+                                    // Update income and exit edit mode
+                                    onIncomeUpdated(newIncome)
+                                    isEditingIncome = false
+                                    incomeError = ""
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Save")
+                            }
+
+                            // Cancel button
+                            OutlinedButton(
+                                onClick = {
+                                    // Reset input to original value and exit edit mode
+                                    incomeInput = sheet.income.toString()
+                                    isEditingIncome = false
+                                    incomeError = ""
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                    } else {
+                        // View mode - display income with Edit button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "€%.2f".format(sheet.income),
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            // Edit button
+                            OutlinedButton(
+                                onClick = {
+                                    // Enter edit mode
+                                    incomeInput = sheet.income.toString()
+                                    isEditingIncome = true
+                                }
+                            ) {
+                                Text("Edit")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Summary card showing total expenses
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -398,6 +542,53 @@ fun MonthDetailScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Surplus/Deficit card - Task 8
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (sheet.income - sheet.getTotalAmount() >= 0) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    }
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    val balance = sheet.income - sheet.getTotalAmount()
+
+                    Text(
+                        text = if (balance >= 0) "Surplus" else "Deficit",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (balance >= 0) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "€%.2f".format(kotlin.math.abs(balance)),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (balance >= 0) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // List of expenses or empty message
             if (sheet.expenses.isEmpty()) {
                 Box(
@@ -411,7 +602,7 @@ fun MonthDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Expenses will appear here",
+                            text = "Click + to add your first expense",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -426,6 +617,17 @@ fun MonthDetailScreen(
                     }
                 }
             }
+        }
+
+        // Show add expense dialog when triggered
+        if (showAddExpenseDialog) {
+            AddExpenseDialog(
+                onExpenseAdded = { description, amount, date ->
+                    onExpenseAdded(description, amount, date)
+                    showAddExpenseDialog = false
+                },
+                onDismiss = { showAddExpenseDialog = false }
+            )
         }
     }
 }
@@ -466,4 +668,144 @@ fun ExpenseItem(expense: Expense) {
             )
         }
     }
+}
+
+// Dialog for adding a new expense to the sheet
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddExpenseDialog(
+    onExpenseAdded: (String, Double, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // State variables for input fields
+    var descriptionInput by remember { mutableStateOf("") }
+    var amountInput by remember { mutableStateOf("") }
+    var dateInput by remember { mutableStateOf("") }
+
+    // State variables for error messages
+    var descriptionError by remember { mutableStateOf("") }
+    var amountError by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Add New Expense",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Description input field
+                OutlinedTextField(
+                    value = descriptionInput,
+                    onValueChange = { newValue ->
+                        descriptionInput = newValue
+                        descriptionError = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Description") },
+                    placeholder = { Text("e.g., Groceries, Rent") },
+                    singleLine = true,
+                    isError = descriptionError.isNotEmpty()
+                )
+                if (descriptionError.isNotEmpty()) {
+                    Text(
+                        text = descriptionError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                // Amount input field
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { newValue ->
+                        amountInput = newValue
+                        amountError = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Amount") },
+                    placeholder = { Text("0.00") },
+                    singleLine = true,
+                    isError = amountError.isNotEmpty()
+                )
+                if (amountError.isNotEmpty()) {
+                    Text(
+                        text = amountError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                // Date input field
+                OutlinedTextField(
+                    value = dateInput,
+                    onValueChange = { newValue ->
+                        dateInput = newValue
+                        dateError = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Date") },
+                    placeholder = { Text("DD/MM/YYYY") },
+                    singleLine = true,
+                    isError = dateError.isNotEmpty()
+                )
+                if (dateError.isNotEmpty()) {
+                    Text(
+                        text = dateError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    // Validate description
+                    if (descriptionInput.isEmpty()) {
+                        descriptionError = "Description cannot be empty"
+                        return@Button
+                    }
+
+                    // Validate amount
+                    val amount = amountInput.toDoubleOrNull()
+                    if (amountInput.isEmpty()) {
+                        amountError = "Amount cannot be empty"
+                        return@Button
+                    }
+                    if (amount == null) {
+                        amountError = "Please enter a valid number"
+                        return@Button
+                    }
+                    if (amount <= 0) {
+                        amountError = "Amount must be greater than zero"
+                        return@Button
+                    }
+
+                    // Validate date
+                    if (dateInput.isEmpty()) {
+                        dateError = "Date cannot be empty"
+                        return@Button
+                    }
+
+                    // Call the callback with validated data
+                    onExpenseAdded(descriptionInput, amount, dateInput)
+                }
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

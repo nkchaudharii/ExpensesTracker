@@ -73,6 +73,52 @@ fun ExpensesTrackerApp() {
                 onBackClick = {
                     // Go back to list screen
                     currentScreen = AppScreen.List
+                },
+                onIncomeUpdated = { newIncome ->
+                    // Update the income for this sheet
+                    allSheets = allSheets.map { existingSheet ->
+                        if (existingSheet.id == screen.sheet.id) {
+                            // Update this sheet with new income value
+                            existingSheet.copy(income = newIncome)
+                        } else {
+                            // Keep other sheets unchanged
+                            existingSheet
+                        }
+                    }
+
+                    // Update current screen with the modified sheet
+                    val updatedSheet = allSheets.find { it.id == screen.sheet.id }
+                    if (updatedSheet != null) {
+                        currentScreen = AppScreen.Detail(updatedSheet)
+                    }
+                },
+                onExpenseAdded = { description, amount, date ->
+                    // Create new expense with unique ID
+                    val newExpense = Expense(
+                        id = IdGenerator.generateId(),
+                        description = description,
+                        amount = amount,
+                        date = date
+                    )
+
+                    // Update the sheet with the new expense
+                    allSheets = allSheets.map { existingSheet ->
+                        if (existingSheet.id == screen.sheet.id) {
+                            // Add expense to this sheet
+                            existingSheet.copy(
+                                expenses = existingSheet.expenses + newExpense
+                            )
+                        } else {
+                            // Keep other sheets unchanged
+                            existingSheet
+                        }
+                    }
+
+                    // Update current screen with the modified sheet
+                    val updatedSheet = allSheets.find { it.id == screen.sheet.id }
+                    if (updatedSheet != null) {
+                        currentScreen = AppScreen.Detail(updatedSheet)
+                    }
                 }
             )
         }
