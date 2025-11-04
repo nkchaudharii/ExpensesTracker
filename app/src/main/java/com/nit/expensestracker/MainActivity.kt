@@ -1,5 +1,6 @@
 package com.nit.expensestracker
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +29,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ExpensesTrackerApp() {
+    // Get context for starting new activities
+    val context = LocalContext.current
+
     // State variable to hold all expense sheets
     var allSheets by remember { mutableStateOf<List<ExpenseSheet>>(emptyList()) }
 
@@ -40,8 +45,14 @@ fun ExpensesTrackerApp() {
             SheetListScreen(
                 sheets = allSheets,
                 onSheetClick = { clickedSheet ->
-                    // Navigate to detail screen when sheet is clicked
-                    currentScreen = AppScreen.Detail(clickedSheet)
+                    // Task 10: Launch separate MonthActivity for each month
+                    val intent = Intent(context, MonthActivity::class.java).apply {
+                        putExtra("SHEET_ID", clickedSheet.id)
+                        putExtra("MONTH", clickedSheet.month)
+                        putExtra("YEAR", clickedSheet.year)
+                        putExtra("INCOME", clickedSheet.income)
+                    }
+                    context.startActivity(intent)
                 },
                 onCreateClick = {
                     // Navigate to create screen when FAB is clicked
@@ -66,7 +77,8 @@ fun ExpensesTrackerApp() {
             )
         }
 
-        // Show details of a specific sheet
+        // Detail screen kept for backward compatibility
+        // Task 10: MonthActivity now handles detail view
         is AppScreen.Detail -> {
             MonthDetailScreen(
                 sheet = screen.sheet,

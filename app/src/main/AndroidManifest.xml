@@ -11,6 +11,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ExpensesTracker">
+
+        <!-- Main Activity - App entry point -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -18,10 +20,17 @@
             android:theme="@style/Theme.ExpensesTracker">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Task 10: Separate activity for month management -->
+        <activity
+            android:name=".MonthActivity"
+            android:exported="false"
+            android:label="Month Details"
+            android:theme="@style/Theme.ExpensesTracker" />
+
     </application>
 
 </manifest>
