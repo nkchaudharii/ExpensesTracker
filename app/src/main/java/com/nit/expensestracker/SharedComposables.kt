@@ -5,15 +5,15 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.font.FontWeight
 
 // Data classes to represent expense sheet and individual expenses
 data class Expense(
@@ -75,12 +75,23 @@ object IdGenerator {
 fun SheetListScreen(
     sheets: List<ExpenseSheet>,
     onSheetClick: (ExpenseSheet) -> Unit,
-    onCreateClick: () -> Unit
+    onCreateClick: () -> Unit,
+    onChartClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Expense Tracker") }
+                title = { Text("Expense Tracker") },
+                actions = {
+                    // Chart button - Tasks 11 & 12 - Using Add icon as temporary fix
+                    IconButton(onClick = onChartClick) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "View Chart",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {

@@ -31,6 +31,13 @@
             android:label="Month Details"
             android:theme="@style/Theme.ExpensesTracker" />
 
+        <!-- Tasks 11 & 12: Chart activity for Income/Expenses visualization -->
+        <activity
+            android:name=".ChartActivity"
+            android:exported="false"
+            android:label="Income/Expenses Chart"
+            android:theme="@style/Theme.ExpensesTracker" />
+
     </application>
 
 </manifest>
