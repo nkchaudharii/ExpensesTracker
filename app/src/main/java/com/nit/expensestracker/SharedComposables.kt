@@ -59,9 +59,16 @@ data class ExpenseSheet(
     }
 }
 
-// Simple ID generator without external libraries
+// Simple ID generator with database support
 object IdGenerator {
     private var currentId = 0
+
+    // Initialize from database to continue from max ID
+    fun initializeFromDatabase(dbHelper: DBHelper) {
+        val maxSheetId = dbHelper.getMaxSheetId()
+        val maxExpenseId = dbHelper.getMaxExpenseId()
+        currentId = maxOf(maxSheetId, maxExpenseId)
+    }
 
     fun generateId(): Int {
         currentId += 1

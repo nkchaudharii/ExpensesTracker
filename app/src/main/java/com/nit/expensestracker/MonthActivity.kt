@@ -10,14 +10,16 @@ import androidx.compose.ui.Modifier
 
 // Task 10: Separate activity for individual month management
 class MonthActivity : ComponentActivity() {
+    private lateinit var dbHelper: DBHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize database helper
+        dbHelper = DBHelper(this)
+
         // Get month data passed from MainActivity via Intent
         val sheetId = intent.getIntExtra("SHEET_ID", -1)
-        val month = intent.getIntExtra("MONTH", 1)
-        val year = intent.getIntExtra("YEAR", 2025)
-        val income = intent.getDoubleExtra("INCOME", 0.0)
 
         setContent {
             MaterialTheme {
@@ -25,51 +27,66 @@ class MonthActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MonthActivityContent(
-                        initialSheet = ExpenseSheet(
-                            id = sheetId,
-                            month = month,
-                            year = year,
-                            income = income,
-                            expenses = emptyList()
-                        ),
-                        onBackPressed = { finish() }
-                    )
+                    if (sheetId != -1) {
+                        MonthActivityContent(
+                            sheetId = sheetId,
+                            dbHelper = dbHelper,
+                            onBackPressed = { finish() }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dbHelper.close()
     }
 }
 
 // Content composable for MonthActivity
 @Composable
 fun MonthActivityContent(
-    initialSheet: ExpenseSheet,
+    sheetId: Int,
+    dbHelper: DBHelper,
     onBackPressed: () -> Unit
 ) {
-    // State to hold current sheet data for this activity instance
-    var currentSheet by remember { mutableStateOf(initialSheet) }
+    // Load sheet from database
+    var currentSheet by remember { mutableStateOf(dbHelper.getSheetById(sheetId)) }
 
-    MonthDetailScreen(
-        sheet = currentSheet,
-        onBackClick = onBackPressed,
-        onIncomeUpdated = { newIncome ->
-            // Update income in this activity instance
-            currentSheet = currentSheet.copy(income = newIncome)
-        },
-        onExpenseAdded = { description, amount, date ->
-            // Create new expense
-            val newExpense = Expense(
-                id = IdGenerator.generateId(),
-                description = description,
-                amount = amount,
-                date = date
-            )
+    // Function to refresh sheet from database
+    fun refreshSheet() {
+        currentSheet = dbHelper.getSheetById(sheetId)
+    }
 
-            // Add expense to current sheet in this activity instance
-            currentSheet = currentSheet.copy(
-                expenses = currentSheet.expenses + newExpense
-            )
-        }
-    )
+    // Only display if sheet exists
+    currentSheet?.let { sheet ->
+        MonthDetailScreen(
+            sheet = sheet,
+            onBackClick = onBackPressed,
+            onIncomeUpdated = { newIncome ->
+                // Update income in database
+                dbHelper.updateSheetIncome(sheetId, newIncome)
+
+                // Refresh sheet from database
+                refreshSheet()
+            },
+            onExpenseAdded = { description, amount, date ->
+                // Create new expense
+                val newExpense = Expense(
+                    id = IdGenerator.generateId(),
+                    description = description,
+                    amount = amount,
+                    date = date
+                )
+
+                // Add expense to database
+                dbHelper.insertExpense(sheetId, newExpense)
+
+                // Refresh sheet from database
+                refreshSheet()
+            }
+        )
+    }
 }

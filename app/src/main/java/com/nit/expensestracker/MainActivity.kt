@@ -11,26 +11,57 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
+    private lateinit var dbHelper: DBHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize database helper
+        dbHelper = DBHelper(this)
+
+        // Initialize IdGenerator with max IDs from database
+        IdGenerator.initializeFromDatabase(dbHelper)
+
         setContent {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ExpensesTrackerApp()
+                    ExpensesTrackerApp(dbHelper)
                 }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Database operations will be handled in composables through state
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Data is saved immediately when changes occur, no need to save here
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dbHelper.close()
+    }
 }
 
 @Composable
-fun ExpensesTrackerApp() {
+fun ExpensesTrackerApp(dbHelper: DBHelper) {
     val context = LocalContext.current
-    var allSheets by remember { mutableStateOf<List<ExpenseSheet>>(emptyList()) }
+
+    // Load sheets from database
+    var allSheets by remember { mutableStateOf(dbHelper.getAllSheets()) }
     var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.List) }
+
+    // Function to refresh sheets from database
+    fun refreshSheets() {
+        allSheets = dbHelper.getAllSheets()
+    }
 
     when (val screen = currentScreen) {
         is AppScreen.List -> {
@@ -72,8 +103,13 @@ fun ExpensesTrackerApp() {
         is AppScreen.Create -> {
             CreateSheetScreen(
                 onSheetCreated = { newSheet ->
-                    allSheets = allSheets + newSheet
-                    currentScreen = AppScreen.List
+                    // Insert sheet into database
+                    val result = dbHelper.insertSheet(newSheet)
+                    if (result > 0) {
+                        // Refresh sheets from database
+                        refreshSheets()
+                        currentScreen = AppScreen.List
+                    }
                 },
                 onBackClick = {
                     currentScreen = AppScreen.List
@@ -85,17 +121,18 @@ fun ExpensesTrackerApp() {
             MonthDetailScreen(
                 sheet = screen.sheet,
                 onBackClick = {
+                    // Refresh sheets when going back
+                    refreshSheets()
                     currentScreen = AppScreen.List
                 },
                 onIncomeUpdated = { newIncome ->
-                    allSheets = allSheets.map { existingSheet ->
-                        if (existingSheet.id == screen.sheet.id) {
-                            existingSheet.copy(income = newIncome)
-                        } else {
-                            existingSheet
-                        }
-                    }
+                    // Update income in database
+                    dbHelper.updateSheetIncome(screen.sheet.id, newIncome)
 
+                    // Refresh sheets from database
+                    refreshSheets()
+
+                    // Update current screen with refreshed sheet
                     val updatedSheet = allSheets.find { it.id == screen.sheet.id }
                     if (updatedSheet != null) {
                         currentScreen = AppScreen.Detail(updatedSheet)
@@ -109,16 +146,13 @@ fun ExpensesTrackerApp() {
                         date = date
                     )
 
-                    allSheets = allSheets.map { existingSheet ->
-                        if (existingSheet.id == screen.sheet.id) {
-                            existingSheet.copy(
-                                expenses = existingSheet.expenses + newExpense
-                            )
-                        } else {
-                            existingSheet
-                        }
-                    }
+                    // Insert expense into database
+                    dbHelper.insertExpense(screen.sheet.id, newExpense)
 
+                    // Refresh sheets from database
+                    refreshSheets()
+
+                    // Update current screen with refreshed sheet
                     val updatedSheet = allSheets.find { it.id == screen.sheet.id }
                     if (updatedSheet != null) {
                         currentScreen = AppScreen.Detail(updatedSheet)
