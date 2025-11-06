@@ -86,6 +86,22 @@ fun MonthActivityContent(
 
                 // Refresh sheet from database
                 refreshSheet()
+            },
+            // Task 14: Add expense update handler
+            onExpenseUpdated = { updatedExpense ->
+                // Update expense in database
+                dbHelper.updateExpense(updatedExpense)
+
+                // Refresh sheet from database
+                refreshSheet()
+            },
+            // Task 14: Add expense delete handler
+            onExpenseDeleted = { expenseToDelete ->
+                // Delete expense from database
+                dbHelper.deleteExpense(expenseToDelete.id)
+
+                // Refresh sheet from database
+                refreshSheet()
             }
         )
     }

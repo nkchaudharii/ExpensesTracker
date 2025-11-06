@@ -157,6 +157,34 @@ fun ExpensesTrackerApp(dbHelper: DBHelper) {
                     if (updatedSheet != null) {
                         currentScreen = AppScreen.Detail(updatedSheet)
                     }
+                },
+                // Task 14: Add expense update handler
+                onExpenseUpdated = { updatedExpense ->
+                    // Update expense in database
+                    dbHelper.updateExpense(updatedExpense)
+
+                    // Refresh sheets from database
+                    refreshSheets()
+
+                    // Update current screen with refreshed sheet
+                    val updatedSheet = allSheets.find { it.id == screen.sheet.id }
+                    if (updatedSheet != null) {
+                        currentScreen = AppScreen.Detail(updatedSheet)
+                    }
+                },
+                // Task 14: Add expense delete handler
+                onExpenseDeleted = { expenseToDelete ->
+                    // Delete expense from database
+                    dbHelper.deleteExpense(expenseToDelete.id)
+
+                    // Refresh sheets from database
+                    refreshSheets()
+
+                    // Update current screen with refreshed sheet
+                    val updatedSheet = allSheets.find { it.id == screen.sheet.id }
+                    if (updatedSheet != null) {
+                        currentScreen = AppScreen.Detail(updatedSheet)
+                    }
                 }
             )
         }
