@@ -33,7 +33,6 @@ data class ExpenseSheet(
     val income: Double = 0.0,
     val expenses: List<Expense> = emptyList()
 ) {
-    // Calculate month name from month number
     fun getMonthName(): String {
         return when (month) {
             1 -> "January"
@@ -52,7 +51,6 @@ data class ExpenseSheet(
         }
     }
 
-    // Calculate total of all expenses
     fun getTotalAmount(): Double {
         var total = 0.0
         for (expense in expenses) {
@@ -66,7 +64,6 @@ data class ExpenseSheet(
 object IdGenerator {
     private var currentId = 0
 
-    // Initialize from database to continue from max ID
     fun initializeFromDatabase(dbHelper: DBHelper) {
         val maxSheetId = dbHelper.getMaxSheetId()
         val maxExpenseId = dbHelper.getMaxExpenseId()
@@ -79,7 +76,6 @@ object IdGenerator {
     }
 }
 
-// Screen to display list of all expense sheets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SheetListScreen(
@@ -93,7 +89,6 @@ fun SheetListScreen(
             TopAppBar(
                 title = { Text("Expense Tracker") },
                 actions = {
-                    // Chart button - Tasks 11 & 12
                     IconButton(onClick = onChartClick) {
                         Icon(
                             Icons.Default.Add,
@@ -110,7 +105,7 @@ fun SheetListScreen(
             }
         }
     ) { paddingValues ->
-        // Show message if no sheets exist
+
         if (sheets.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -131,7 +126,6 @@ fun SheetListScreen(
                 }
             }
         } else {
-            // Display list of sheets
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -150,7 +144,6 @@ fun SheetListScreen(
     }
 }
 
-// Individual card for each sheet in the list
 @Composable
 fun SheetCard(sheet: ExpenseSheet, onClick: () -> Unit) {
     Card(
@@ -194,16 +187,14 @@ fun SheetCard(sheet: ExpenseSheet, onClick: () -> Unit) {
     }
 }
 
-// Screen for creating a new expense sheet - Task 15: Auto-default to current date
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSheetScreen(
     onSheetCreated: (ExpenseSheet) -> Unit,
     onBackClick: () -> Unit
 ) {
-    // Task 15: Default to current month and year
     val calendar = Calendar.getInstance()
-    val currentMonth = calendar.get(Calendar.MONTH) + 1  // Calendar.MONTH is 0-based
+    val currentMonth = calendar.get(Calendar.MONTH) + 1
     val currentYear = calendar.get(Calendar.YEAR)
 
     var selectedMonth by remember { mutableStateOf(currentMonth) }
@@ -232,7 +223,7 @@ fun CreateSheetScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Task 15: Show current date info
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -257,7 +248,6 @@ fun CreateSheetScreen(
                 }
             }
 
-            // Month selection dropdown
             Text(
                 text = "Select Month",
                 style = MaterialTheme.typography.labelLarge,
@@ -272,7 +262,6 @@ fun CreateSheetScreen(
                 }
             )
 
-            // Year input field
             Text(
                 text = "Enter Year",
                 style = MaterialTheme.typography.labelLarge,
@@ -291,7 +280,6 @@ fun CreateSheetScreen(
                 isError = errorMessage.isNotEmpty()
             )
 
-            // Show error message if validation fails
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
@@ -302,10 +290,9 @@ fun CreateSheetScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Create button
             Button(
                 onClick = {
-                    // Validate year input
+
                     val year = yearInput.toIntOrNull()
 
                     if (yearInput.isEmpty()) {
@@ -318,12 +305,6 @@ fun CreateSheetScreen(
                         return@Button
                     }
 
-                    if (year < 2000 || year > 2100) {
-                        errorMessage = "Year must be between 2000 and 2100"
-                        return@Button
-                    }
-
-                    // Create new sheet and return to previous screen
                     val newSheet = ExpenseSheet(
                         id = IdGenerator.generateId(),
                         month = selectedMonth,
@@ -342,7 +323,6 @@ fun CreateSheetScreen(
     }
 }
 
-// Dropdown component for selecting month
 @Composable
 fun MonthDropdown(
     selectedMonth: Int,
@@ -388,7 +368,6 @@ fun MonthDropdown(
     }
 }
 
-// Screen showing details of a single expense sheet - Task 14: Added edit/delete handlers
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthDetailScreen(
@@ -399,13 +378,9 @@ fun MonthDetailScreen(
     onExpenseUpdated: (Expense) -> Unit,
     onExpenseDeleted: (Expense) -> Unit
 ) {
-    // State to track if user is editing income
     var isEditingIncome by remember { mutableStateOf(false) }
-    // State to hold the income input value
     var incomeInput by remember { mutableStateOf(sheet.income.toString()) }
-    // State to hold error message for income validation
     var incomeError by remember { mutableStateOf("") }
-    // State to control showing the add expense dialog
     var showAddExpenseDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -428,12 +403,13 @@ fun MonthDetailScreen(
             }
         }
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Income card - shows income with edit functionality
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -454,9 +430,7 @@ fun MonthDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Check if user is in edit mode or view mode
                     if (isEditingIncome) {
-                        // Edit mode - show TextField for user to input new income
                         OutlinedTextField(
                             value = incomeInput,
                             onValueChange = { newValue ->
@@ -470,7 +444,6 @@ fun MonthDetailScreen(
                             isError = incomeError.isNotEmpty()
                         )
 
-                        // Show error message if validation fails
                         if (incomeError.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -482,15 +455,13 @@ fun MonthDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Buttons row for Save and Cancel
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Save button
+
                             Button(
                                 onClick = {
-                                    // Validate the input
                                     val newIncome = incomeInput.toDoubleOrNull()
 
                                     if (incomeInput.isEmpty()) {
@@ -508,31 +479,24 @@ fun MonthDetailScreen(
                                         return@Button
                                     }
 
-                                    // Update income and exit edit mode
                                     onIncomeUpdated(newIncome)
                                     isEditingIncome = false
-                                    incomeError = ""
                                 },
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Save")
-                            }
+                            ) { Text("Save") }
 
-                            // Cancel button
                             OutlinedButton(
                                 onClick = {
-                                    // Reset input to original value and exit edit mode
                                     incomeInput = sheet.income.toString()
                                     isEditingIncome = false
                                     incomeError = ""
                                 },
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Cancel")
-                            }
+                            ) { Text("Cancel") }
                         }
+
                     } else {
-                        // View mode - display income with Edit button
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -544,23 +508,17 @@ fun MonthDetailScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
-
-                            // Edit button
                             OutlinedButton(
                                 onClick = {
-                                    // Enter edit mode
                                     incomeInput = sheet.income.toString()
                                     isEditingIncome = true
                                 }
-                            ) {
-                                Text("Edit")
-                            }
+                            ) { Text("Edit") }
                         }
                     }
                 }
             }
 
-            // Summary card showing total expenses
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -574,19 +532,24 @@ fun MonthDetailScreen(
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
+
                     Text(
                         text = "Total Spent",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = "€%.2f".format(sheet.getTotalAmount()),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = "${sheet.expenses.size} expenses recorded",
                         style = MaterialTheme.typography.bodyMedium,
@@ -597,53 +560,52 @@ fun MonthDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Surplus/Deficit card - Task 8
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (sheet.income - sheet.getTotalAmount() >= 0) {
+                    containerColor = if (sheet.income - sheet.getTotalAmount() >= 0)
                         MaterialTheme.colorScheme.tertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.errorContainer
-                    }
+                    else MaterialTheme.colorScheme.errorContainer
                 )
             ) {
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
+
                     val balance = sheet.income - sheet.getTotalAmount()
 
                     Text(
                         text = if (balance >= 0) "Surplus" else "Deficit",
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (balance >= 0) {
+                        color = if (balance >= 0)
                             MaterialTheme.colorScheme.onTertiaryContainer
-                        } else {
+                        else
                             MaterialTheme.colorScheme.onErrorContainer
-                        }
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = "€%.2f".format(kotlin.math.abs(balance)),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
-                        color = if (balance >= 0) {
+                        color = if (balance >= 0)
                             MaterialTheme.colorScheme.onTertiaryContainer
-                        } else {
+                        else
                             MaterialTheme.colorScheme.onErrorContainer
-                        }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // List of expenses or empty message
             if (sheet.expenses.isEmpty()) {
+
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -660,7 +622,9 @@ fun MonthDetailScreen(
                         )
                     }
                 }
+
             } else {
+
                 LazyColumn(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -680,7 +644,6 @@ fun MonthDetailScreen(
             }
         }
 
-        // Show add expense dialog when triggered
         if (showAddExpenseDialog) {
             AddExpenseDialog(
                 onExpenseAdded = { description, amount, date ->
@@ -693,13 +656,13 @@ fun MonthDetailScreen(
     }
 }
 
-// Individual expense item in the list - Task 14: Added Edit/Delete buttons
 @Composable
 fun ExpenseItem(
     expense: Expense,
     onEdit: (Expense) -> Unit,
     onDelete: (Expense) -> Unit
 ) {
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -707,6 +670,7 @@ fun ExpenseItem(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp)
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -714,6 +678,7 @@ fun ExpenseItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = expense.description,
@@ -736,11 +701,10 @@ fun ExpenseItem(
                 modifier = Modifier.padding(end = 8.dp)
             )
 
-            // Task 14: Action buttons for Edit and Delete
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Edit button
+
                 IconButton(
                     onClick = { showEditDialog = true },
                     modifier = Modifier.size(32.dp)
@@ -752,7 +716,6 @@ fun ExpenseItem(
                     )
                 }
 
-                // Delete button
                 IconButton(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier.size(32.dp)
@@ -767,7 +730,6 @@ fun ExpenseItem(
         }
     }
 
-    // Task 14: Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -796,7 +758,6 @@ fun ExpenseItem(
         )
     }
 
-    // Task 14: Edit expense dialog
     if (showEditDialog) {
         EditExpenseDialog(
             expense = expense,
@@ -809,7 +770,6 @@ fun ExpenseItem(
     }
 }
 
-// Task 14: Dialog for editing an existing expense
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditExpenseDialog(
@@ -946,19 +906,25 @@ fun EditExpenseDialog(
     )
 }
 
-// Dialog for adding a new expense to the sheet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseDialog(
     onExpenseAdded: (String, Double, String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // State variables for input fields
+
+    // ✅ AUTO-DATE (Task 17)
+    val calendar = java.util.Calendar.getInstance()
+    val defaultDate = "%02d/%02d/%04d".format(
+        calendar.get(java.util.Calendar.DAY_OF_MONTH),
+        calendar.get(java.util.Calendar.MONTH) + 1,
+        calendar.get(java.util.Calendar.YEAR)
+    )
+
     var descriptionInput by remember { mutableStateOf("") }
     var amountInput by remember { mutableStateOf("") }
-    var dateInput by remember { mutableStateOf("") }
+    var dateInput by remember { mutableStateOf(defaultDate) }  // ✅ auto-filled date
 
-    // State variables for error messages
     var descriptionError by remember { mutableStateOf("") }
     var amountError by remember { mutableStateOf("") }
     var dateError by remember { mutableStateOf("") }
@@ -977,7 +943,7 @@ fun AddExpenseDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Description input field
+
                 OutlinedTextField(
                     value = descriptionInput,
                     onValueChange = { newValue ->
@@ -990,15 +956,7 @@ fun AddExpenseDialog(
                     singleLine = true,
                     isError = descriptionError.isNotEmpty()
                 )
-                if (descriptionError.isNotEmpty()) {
-                    Text(
-                        text = descriptionError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
 
-                // Amount input field
                 OutlinedTextField(
                     value = amountInput,
                     onValueChange = { newValue ->
@@ -1011,15 +969,8 @@ fun AddExpenseDialog(
                     singleLine = true,
                     isError = amountError.isNotEmpty()
                 )
-                if (amountError.isNotEmpty()) {
-                    Text(
-                        text = amountError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
 
-                // Date input field
+                // ✅ Date auto-filled
                 OutlinedTextField(
                     value = dateInput,
                     onValueChange = { newValue ->
@@ -1032,46 +983,23 @@ fun AddExpenseDialog(
                     singleLine = true,
                     isError = dateError.isNotEmpty()
                 )
-                if (dateError.isNotEmpty()) {
-                    Text(
-                        text = dateError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    // Validate description
+
                     if (descriptionInput.isEmpty()) {
                         descriptionError = "Description cannot be empty"
                         return@Button
                     }
 
-                    // Validate amount
                     val amount = amountInput.toDoubleOrNull()
-                    if (amountInput.isEmpty()) {
-                        amountError = "Amount cannot be empty"
-                        return@Button
-                    }
-                    if (amount == null) {
-                        amountError = "Please enter a valid number"
-                        return@Button
-                    }
-                    if (amount <= 0) {
-                        amountError = "Amount must be greater than zero"
+                    if (amountInput.isEmpty() || amount == null || amount <= 0) {
+                        amountError = "Enter a valid amount"
                         return@Button
                     }
 
-                    // Validate date
-                    if (dateInput.isEmpty()) {
-                        dateError = "Date cannot be empty"
-                        return@Button
-                    }
-
-                    // Call the callback with validated data
                     onExpenseAdded(descriptionInput, amount, dateInput)
                 }
             ) {
