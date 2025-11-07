@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,17 +21,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import android.graphics.Paint
+import kotlin.math.abs
 
-// Task 11 & 12: Chart Activity for displaying Income/Expenses graphs
+// Task 11, 12 & 16: Chart Activity with swipe navigation
 class ChartActivity : ComponentActivity() {
+    private lateinit var dbHelper: DBHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Receive data from MainActivity
-        val months = intent.getStringArrayExtra("MONTHS") ?: arrayOf()
-        val incomeData = intent.getDoubleArrayExtra("INCOME_DATA") ?: doubleArrayOf()
-        val expenseData = intent.getDoubleArrayExtra("EXPENSE_DATA") ?: doubleArrayOf()
+        // Initialize database helper
+        dbHelper = DBHelper(this)
 
         setContent {
             MaterialTheme {
@@ -37,26 +41,58 @@ class ChartActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ChartScreen(
-                        months = months.toList(),
-                        incomeData = incomeData.toList(),
-                        expenseData = expenseData.toList(),
+                    ChartScreenWithSwipe(
+                        dbHelper = dbHelper,
                         onBackPressed = { finish() }
                     )
                 }
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dbHelper.close()
+    }
 }
 
+// Task 16: Chart screen with swipe navigation
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChartScreen(
-    months: List<String>,
-    incomeData: List<Double>,
-    expenseData: List<Double>,
+fun ChartScreenWithSwipe(
+    dbHelper: DBHelper,
     onBackPressed: () -> Unit
 ) {
+    // Get all sheets sorted by date
+    val allSheets = remember {
+        dbHelper.getAllSheets().sortedWith(
+            compareBy<ExpenseSheet> { it.year }.thenBy { it.month }
+        )
+    }
+
+    // State to track current viewing window (4 months at a time)
+    var currentIndex by remember { mutableStateOf(maxOf(0, allSheets.size - 4)) }
+
+    // Calculate the current window of sheets to display
+    val displaySheets = remember(currentIndex, allSheets) {
+        if (allSheets.isEmpty()) {
+            emptyList()
+        } else {
+            val startIndex = currentIndex.coerceIn(0, maxOf(0, allSheets.size - 1))
+            val endIndex = minOf(startIndex + 4, allSheets.size)
+            allSheets.subList(startIndex, endIndex)
+        }
+    }
+
+    // Prepare chart data
+    val months = displaySheets.map { "${it.getMonthName().take(3)} ${it.year}" }
+    val incomeData = displaySheets.map { it.income }
+    val expenseData = displaySheets.map { it.getTotalAmount() }
+
+    // Calculate if navigation is possible
+    val canSwipeLeft = currentIndex > 0
+    val canSwipeRight = currentIndex < maxOf(0, allSheets.size - 4)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -84,11 +120,55 @@ fun ChartScreen(
                 text = "Income/Expenses",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Task 16: Swipe instructions
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Swipe left/right to navigate",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (canSwipeLeft) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Swipe left",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        if (canSwipeRight) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Swipe right",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             // Check if we have data
-            if (months.isEmpty() || incomeData.isEmpty() || expenseData.isEmpty()) {
+            if (allSheets.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -99,14 +179,73 @@ fun ChartScreen(
                     )
                 }
             } else {
-                // Custom Chart Composable
-                CustomLineChart(
+                // Task 16: Custom Chart with swipe gesture detection
+                SwipeableChart(
                     months = months,
                     incomeData = incomeData,
-                    expenseData = expenseData
+                    expenseData = expenseData,
+                    onSwipeLeft = {
+                        if (canSwipeRight) {
+                            currentIndex = minOf(currentIndex + 1, allSheets.size - 4)
+                        }
+                    },
+                    onSwipeRight = {
+                        if (canSwipeLeft) {
+                            currentIndex = maxOf(currentIndex - 1, 0)
+                        }
+                    }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Display current range info
+                Text(
+                    text = "Showing ${displaySheets.size} of ${allSheets.size} months",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Navigation buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = {
+                            if (canSwipeLeft) {
+                                currentIndex = maxOf(currentIndex - 1, 0)
+                            }
+                        },
+                        enabled = canSwipeLeft
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Previous"
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Previous")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (canSwipeRight) {
+                                currentIndex = minOf(currentIndex + 1, allSheets.size - 4)
+                            }
+                        },
+                        enabled = canSwipeRight
+                    ) {
+                        Text("Next")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Next"
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Legend
                 Row(
@@ -121,17 +260,63 @@ fun ChartScreen(
     }
 }
 
+// Task 16: Swipeable chart composable with gesture detection
+@Composable
+fun SwipeableChart(
+    months: List<String>,
+    incomeData: List<Double>,
+    expenseData: List<Double>,
+    onSwipeLeft: () -> Unit,
+    onSwipeRight: () -> Unit
+) {
+    var dragOffset by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        // Detect swipe direction based on accumulated drag
+                        if (abs(dragOffset) > 100f) { // Minimum swipe distance
+                            if (dragOffset > 0) {
+                                // Swiped right - go to previous
+                                onSwipeRight()
+                            } else {
+                                // Swiped left - go to next
+                                onSwipeLeft()
+                            }
+                        }
+                        dragOffset = 0f
+                    },
+                    onDragCancel = {
+                        dragOffset = 0f
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        dragOffset += dragAmount
+                    }
+                )
+            }
+    ) {
+        CustomLineChart(
+            months = months,
+            incomeData = incomeData,
+            expenseData = expenseData
+        )
+    }
+}
+
 @Composable
 fun CustomLineChart(
     months: List<String>,
     incomeData: List<Double>,
     expenseData: List<Double>
 ) {
-    // Square aspect ratio without BoxWithConstraints
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f) // This makes it square
+            .aspectRatio(1f)
             .padding(16.dp)
     ) {
         val canvasWidth = size.width
@@ -151,7 +336,6 @@ fun CustomLineChart(
         val maxIncome = incomeData.maxOrNull() ?: 0.0
         val maxExpense = expenseData.maxOrNull() ?: 0.0
         val maxValue = maxOf(maxIncome, maxExpense)
-        // Adjust yAxisMax to have a minimum range for visibility
         val yAxisMax = if (maxValue > 0) {
             val calculated = maxValue * 1.2
             if (calculated < 100) 100.0 else calculated
@@ -189,7 +373,7 @@ fun CustomLineChart(
                 strokeWidth = 1f
             )
 
-            // Draw Y-axis label using native canvas
+            // Draw Y-axis label
             drawIntoCanvas { canvas ->
                 val paint = Paint().apply {
                     color = android.graphics.Color.BLACK
@@ -216,7 +400,6 @@ fun CustomLineChart(
         months.forEachIndexed { index, month ->
             val xPos = leftMargin + (xSpacing * index)
 
-            // Draw month label
             drawIntoCanvas { canvas ->
                 val paint = Paint().apply {
                     color = android.graphics.Color.BLACK
@@ -246,7 +429,6 @@ fun CustomLineChart(
                     incomePath.lineTo(xPos, yPos)
                 }
 
-                // Draw point
                 drawCircle(
                     color = Color(0xFF4CAF50),
                     radius = 8f,
@@ -275,7 +457,6 @@ fun CustomLineChart(
                     expensePath.lineTo(xPos, yPos)
                 }
 
-                // Draw point
                 drawCircle(
                     color = Color(0xFFF44336),
                     radius = 8f,
