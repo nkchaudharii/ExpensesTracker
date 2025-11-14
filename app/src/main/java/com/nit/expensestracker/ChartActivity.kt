@@ -96,15 +96,21 @@ fun ChartScreenWithSwipe(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Income/Expenses Chart") },
+                title = { Text("Income/Expenses Chart", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go back"
+                            contentDescription = "Go back",
+                            tint = Color.White
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF4CAF50),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { paddingValues ->
@@ -129,7 +135,7 @@ fun ChartScreenWithSwipe(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = Color(0xFFE8F5E9)
                 )
             ) {
                 Row(
@@ -141,8 +147,7 @@ fun ChartScreenWithSwipe(
                 ) {
                     Text(
                         text = "Swipe left/right to navigate",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -151,7 +156,7 @@ fun ChartScreenWithSwipe(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Swipe left",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color(0xFF4CAF50),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -159,7 +164,7 @@ fun ChartScreenWithSwipe(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Swipe right",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = Color(0xFF4CAF50),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -218,7 +223,10 @@ fun ChartScreenWithSwipe(
                                 currentIndex = maxOf(currentIndex - 1, 0)
                             }
                         },
-                        enabled = canSwipeLeft
+                        enabled = canSwipeLeft,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -234,7 +242,10 @@ fun ChartScreenWithSwipe(
                                 currentIndex = minOf(currentIndex + 1, allSheets.size - 4)
                             }
                         },
-                        enabled = canSwipeRight
+                        enabled = canSwipeRight,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
                     ) {
                         Text("Next")
                         Spacer(modifier = Modifier.width(4.dp))

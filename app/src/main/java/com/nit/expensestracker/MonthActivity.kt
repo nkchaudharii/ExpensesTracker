@@ -9,19 +9,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 
-class MonthActivity : ComponentActivity() {
-
+class MonthActivity : ComponentActivity()
+{
     private lateinit var dbHelper: DBHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         dbHelper = DBHelper(this)
-
         val sheetId = intent.getIntExtra("SHEET_ID", -1)
 
         setContent {
-            MaterialTheme {
+            ExpensesTrackerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -32,6 +31,17 @@ class MonthActivity : ComponentActivity() {
                             dbHelper = dbHelper,
                             onBackPressed = { finish() }
                         )
+                    } else {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = "Invalid sheet selected",
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
                     }
                 }
             }
@@ -57,7 +67,6 @@ fun MonthActivityContent(
     }
 
     currentSheet?.let { sheet ->
-
         MonthDetailScreen(
             sheet = sheet,
             onBackClick = onBackPressed,
