@@ -11,13 +11,13 @@ import androidx.compose.ui.Modifier
 
 class MonthActivity : ComponentActivity()
 {
-    private lateinit var dbHelper: DBHelper
+    private lateinit var myydb: DBHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        dbHelper = DBHelper(this)
-        val sheetId = intent.getIntExtra("SHEET_ID", -1)
+        myydb = DBHelper(this)
+        val sheet_Id = intent.getIntExtra("SHEET_ID", -1)
 
         setContent {
             ExpensesTrackerTheme {
@@ -25,11 +25,15 @@ class MonthActivity : ComponentActivity()
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (sheetId != -1) {
+                    if (sheet_Id != -1) {
                         MonthActivityContent(
-                            sheetId = sheetId,
-                            dbHelper = dbHelper,
-                            onBackPressed = { finish() }
+                            sheetId = sheet_Id,
+                            dbHelper = myydb,
+                            onBackPressed = {
+                                // ✅ Trigger refresh in MainActivity before finishing
+                                MainActivity.refCallbackk?.invoke()
+                                finish()
+                            }
                         )
                     } else {
                         Surface(
@@ -50,7 +54,7 @@ class MonthActivity : ComponentActivity()
 
     override fun onDestroy() {
         super.onDestroy()
-        dbHelper.close()
+        myydb.close()
     }
 }
 
@@ -60,37 +64,37 @@ fun MonthActivityContent(
     dbHelper: DBHelper,
     onBackPressed: () -> Unit
 ) {
-    var currentSheet by remember { mutableStateOf(dbHelper.getSheetById(sheetId)) }
+    var active_Sheet by remember { mutableStateOf(dbHelper.getSheetById(sheetId)) }
 
-    fun refreshSheet() {
-        currentSheet = dbHelper.getSheetById(sheetId)
+    fun updateSheet() {
+        active_Sheet = dbHelper.getSheetById(sheetId)
     }
 
-    currentSheet?.let { sheet ->
+    active_Sheet?.let { sheetinfo ->
         MonthDetailScreen(
-            sheet = sheet,
+            sheet = sheetinfo,
             onBackClick = onBackPressed,
-            onIncomeUpdated = { newIncome ->
-                dbHelper.updateSheetIncome(sheetId, newIncome)
-                refreshSheet()
+            onIncomeUpdated = { newIncomee ->
+                dbHelper.updateSheetIncome(sheetId, newIncomee)
+                updateSheet()
             },
-            onExpenseAdded = { description, amount, date ->
-                val newExpense = Expense(
+            onExpenseAdded = { descr, amt, datee ->
+                val newExpensee = Expense(
                     id = IdGenerator.generateId(),
-                    description = description,
-                    amount = amount,
-                    date = date
+                    description = descr,
+                    amount = amt,
+                    date = datee
                 )
-                dbHelper.insertExpense(sheetId, newExpense)
-                refreshSheet()
+                dbHelper.insertExpense(sheetId, newExpensee)
+                updateSheet()
             },
-            onExpenseUpdated = { updatedExpense ->
-                dbHelper.updateExpense(updatedExpense)
-                refreshSheet()
+            onExpenseUpdated = { updatedExpensee ->
+                dbHelper.updateExpense(updatedExpensee)
+                updateSheet()
             },
-            onExpenseDeleted = { deletedExpense ->
-                dbHelper.deleteExpense(deletedExpense.id)
-                refreshSheet()
+            onExpenseDeleted = { deletedExpensee ->
+                dbHelper.deleteExpense(deletedExpensee.id)
+               updateSheet()
             }
         )
     }

@@ -19,14 +19,19 @@ import androidx.compose.ui.platform.LocalContext
 class MainActivity : ComponentActivity() {
 
     // Database helper instance to manage data operations
-    private lateinit var mydb: DBHelper
+    private lateinit var myydb: DBHelper
+
+    companion object {
+        // ✅ Static variable to trigger refresh from outside
+        var refCallbackk: (() -> Unit)? = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Set up the ID generator and database.
-        mydb = DBHelper(this)
-        IdGenerator.initializeFromDatabase(mydb)
+        myydb = DBHelper(this)
+        IdGenerator.initializeFromDatabase(myydb)
 
         // Set up the UI using Jetpack Compose
         setContent {
@@ -36,7 +41,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Launch main app composable
-                    ExpensesMainUi(mydb)
+                    ExpensesMainUi(myydb)
                 }
             }
         }
@@ -45,7 +50,8 @@ class MainActivity : ComponentActivity() {
     // When the activity is terminated, terminate the database connection.
     override fun onDestroy() {
         super.onDestroy()
-        mydb.close()
+        refCallbackk = null // ✅ Clean up callback
+        myydb.close()
     }
 }
 
@@ -53,28 +59,46 @@ class MainActivity : ComponentActivity() {
 // ==============****=============*** MAIN UI & NAVIGATION ***=============****=====================
 @Composable
 // The root composable function that manages screen state and navigation
-fun ExpensesMainUi(mydb: DBHelper) {
+fun ExpensesMainUi(myydb: DBHelper) {
     val context = LocalContext.current
 
     // Open the database and load every expense sheet that is available.
-    var sheetItems by remember { mutableStateOf(mydb.getAllSheets()) }
+    var rec_Sheet by remember { mutableStateOf(myydb.getAllSheets()) }
+
+    // ✅ Trigger for forcing recomposition
+    var signal_Update by remember { mutableStateOf(0) }
 
     // Keep track of which screen the user is currently on
-    var screenState by remember { mutableStateOf<AppScreen>(AppScreen.List) }
+    var active_Screen by remember { mutableStateOf<AppScreen>(AppScreen.List) }
 
     // After updates, manually reload the list of sheets.
-    fun refreshSheets() {
-        sheetItems = mydb.getAllSheets()
+    fun ref_Sheets() {
+        rec_Sheet = myydb.getAllSheets()
+        signal_Update++ // ✅ Force UI update
+    }
+
+    // ✅ Set up the callback so MonthActivity can trigger refresh
+    LaunchedEffect(Unit) {
+        MainActivity.refCallbackk = {
+            ref_Sheets()
+        }
+    }
+
+    // ✅ Watch for refresh trigger changes
+    LaunchedEffect(signal_Update) {
+        rec_Sheet = myydb.getAllSheets()
     }
 
     // Apply animation effects to transitions between screens to make navigation smoother
-    AnimatedContent(targetState = screenState, label = "navTransition") { screen ->
+    AnimatedContent(
+        targetState = active_Screen,
+        label = "screenFlowAnimation") { screen ->
         when (screen) {
 
             // Show all the different expenses sheets.
             is AppScreen.List -> {
                 SheetListScreen(
-                    sheets = sheetItems,
+                    sheets = rec_Sheet,
                     onSheetClick = { selected ->
                         // When a sheet is selected, display the month's activity
                         val jumpIntent = Intent(context, MonthActivity::class.java).apply {
@@ -84,7 +108,7 @@ fun ExpensesMainUi(mydb: DBHelper) {
                     },
                     // Click 'Add New' to navigate to the Create screen.
                     onCreateClick = {
-                        screenState = AppScreen.Create
+                        active_Screen = AppScreen.Create
                     },
                     // To see a visual summary, navigate to the chart activity.
                     onChartClick = {
@@ -92,12 +116,12 @@ fun ExpensesMainUi(mydb: DBHelper) {
                     },
                     // Remove the chosen sheet and reload the list.
                     onSheetDeleted = { sheet ->
-                        mydb.deleteSheet(sheet.id)
-                        refreshSheets()
+                        myydb.deleteSheet(sheet.id)
+                        ref_Sheets()
                     },
                     // Open the chosen sheet's Edit screen.
                     onSheetEdited = { sheet ->
-                        screenState = AppScreen.Edit(sheet)
+                        active_Screen = AppScreen.Edit(sheet)
                     }
                 )
             }
@@ -105,10 +129,10 @@ fun ExpensesMainUi(mydb: DBHelper) {
             // The screen where a new expense sheet is created
             is AppScreen.Create -> {
                 CreateSheetScreen(
-                    existingSheets = sheetItems,
+                    existingSheets = rec_Sheet,
                     onSheetCreated = { newSheet ->
                         // Check if a sheet with the same month and year already exists
-                        val duplicate = sheetItems.any {
+                        val duplicate = rec_Sheet.any {
                             it.month == newSheet.month && it.year == newSheet.year
                         }
 
@@ -116,15 +140,15 @@ fun ExpensesMainUi(mydb: DBHelper) {
                             // Show error - handled in CreateSheetScreen
                             // Error message will be displayed to user
                         } else {
-                            val insertResult = mydb.insertSheet(newSheet)
+                            val insertResult = myydb.insertSheet(newSheet)
                             if (insertResult > 0) {
-                                refreshSheets()
-                                screenState = AppScreen.List
+                                ref_Sheets()
+                                active_Screen = AppScreen.List
                             }
                         }
                     },
                     onBackClick = {
-                        screenState = AppScreen.List
+                        active_Screen = AppScreen.List
                     }
                 )
             }
@@ -133,24 +157,24 @@ fun ExpensesMainUi(mydb: DBHelper) {
             is AppScreen.Edit -> {
                 EditSheetScreen(
                     sheet = screen.sheet,
-                    existingSheets = sheetItems,
+                    existingSheets = rec_Sheet,
                     onSheetUpdated = { updated ->
                         // Check if updating would create a duplicate (excluding the current sheet)
-                        val duplicate = sheetItems.any {
+                        val duplicate = rec_Sheet.any {
                             it.id != updated.id &&
                                     it.month == updated.month &&
                                     it.year == updated.year
                         }
 
                         if (!duplicate) {
-                            mydb.updateSheet(updated)
-                            refreshSheets()
-                            screenState = AppScreen.List
+                            myydb.updateSheet(updated)
+                            ref_Sheets()
+                            active_Screen = AppScreen.List
                         }
                         // Error message will be displayed in EditSheetScreen if duplicate
                     },
                     onBackClick = {
-                        screenState = AppScreen.List
+                        active_Screen = AppScreen.List
                     }
                 )
             }
@@ -159,10 +183,10 @@ fun ExpensesMainUi(mydb: DBHelper) {
             is AppScreen.Detail -> {
                 MonthActivityContent(
                     sheetId = screen.sheet.id,
-                    dbHelper = mydb,
+                    dbHelper = myydb,
                     onBackPressed = {
-                        refreshSheets()
-                        screenState = AppScreen.List
+                        ref_Sheets()
+                        active_Screen = AppScreen.List
                     }
                 )
             }

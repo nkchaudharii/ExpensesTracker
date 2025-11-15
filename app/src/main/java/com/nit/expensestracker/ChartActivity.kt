@@ -22,18 +22,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.PathEffect
 import android.graphics.Paint
 import kotlin.math.abs
 
 // Task 11, 12 & 16: Chart Activity with swipe navigation
 class ChartActivity : ComponentActivity() {
-    private lateinit var dbHelper: DBHelper
+    private lateinit var db_Access: DBHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Initialize database helper
-        dbHelper = DBHelper(this)
+        db_Access = DBHelper(this)
 
         setContent {
             MaterialTheme {
@@ -42,7 +44,7 @@ class ChartActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     ChartScreenWithSwipe(
-                        dbHelper = dbHelper,
+                        dbHelper = db_Access,
                         onBackPressed = { finish() }
                     )
                 }
@@ -52,7 +54,7 @@ class ChartActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        dbHelper.close()
+        db_Access.close()
     }
 }
 
@@ -64,34 +66,34 @@ fun ChartScreenWithSwipe(
     onBackPressed: () -> Unit
 ) {
     // Get all sheets sorted by date
-    val allSheets = remember {
+    val all_Sheets = remember {
         dbHelper.getAllSheets().sortedWith(
             compareBy<ExpenseSheet> { it.year }.thenBy { it.month }
         )
     }
 
     // State to track current viewing window (4 months at a time)
-    var currentIndex by remember { mutableStateOf(maxOf(0, allSheets.size - 4)) }
+    var current_Index by remember { mutableStateOf(maxOf(0, all_Sheets.size - 4)) }
 
     // Calculate the current window of sheets to display
-    val displaySheets = remember(currentIndex, allSheets) {
-        if (allSheets.isEmpty()) {
+    val display_Sheets = remember(current_Index, all_Sheets) {
+        if (all_Sheets.isEmpty()) {
             emptyList()
         } else {
-            val startIndex = currentIndex.coerceIn(0, maxOf(0, allSheets.size - 1))
-            val endIndex = minOf(startIndex + 4, allSheets.size)
-            allSheets.subList(startIndex, endIndex)
+            val start_Index = current_Index.coerceIn(0, maxOf(0, all_Sheets.size - 1))
+            val end_Index = minOf(start_Index + 4, all_Sheets.size)
+            all_Sheets.subList(start_Index, end_Index)
         }
     }
 
     // Prepare chart data
-    val months = displaySheets.map { "${it.getMonthName().take(3)} ${it.year}" }
-    val incomeData = displaySheets.map { it.income }
-    val expenseData = displaySheets.map { it.getTotalAmount() }
+    val all_months = display_Sheets.map { "${it.getMonthName().take(3)} ${it.year}" }
+    val income_Data = display_Sheets.map { it.income }
+    val expense_Data = display_Sheets.map { it.getTotalAmount() }
 
     // Calculate if navigation is possible
-    val canSwipeLeft = currentIndex > 0
-    val canSwipeRight = currentIndex < maxOf(0, allSheets.size - 4)
+    val canSwipe_Left = current_Index > 0
+    val canSwipe_Right = current_Index < maxOf(0, all_Sheets.size - 4)
 
     Scaffold(
         topBar = {
@@ -152,7 +154,7 @@ fun ChartScreenWithSwipe(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (canSwipeLeft) {
+                        if (canSwipe_Left) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Swipe left",
@@ -160,7 +162,7 @@ fun ChartScreenWithSwipe(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                        if (canSwipeRight) {
+                        if (canSwipe_Right) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Swipe right",
@@ -173,7 +175,7 @@ fun ChartScreenWithSwipe(
             }
 
             // Check if we have data
-            if (allSheets.isEmpty()) {
+            if (all_Sheets.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -186,17 +188,17 @@ fun ChartScreenWithSwipe(
             } else {
                 // Task 16: Custom Chart with swipe gesture detection
                 SwipeableChart(
-                    months = months,
-                    incomeData = incomeData,
-                    expenseData = expenseData,
+                    months = all_months,
+                    incomeData = income_Data,
+                    expenseData = expense_Data,
                     onSwipeLeft = {
-                        if (canSwipeRight) {
-                            currentIndex = minOf(currentIndex + 1, allSheets.size - 4)
+                        if (canSwipe_Right) {
+                            current_Index = minOf(current_Index + 1, all_Sheets.size - 4)
                         }
                     },
                     onSwipeRight = {
-                        if (canSwipeLeft) {
-                            currentIndex = maxOf(currentIndex - 1, 0)
+                        if (canSwipe_Left) {
+                            current_Index = maxOf(current_Index - 1, 0)
                         }
                     }
                 )
@@ -205,7 +207,7 @@ fun ChartScreenWithSwipe(
 
                 // Display current range info
                 Text(
-                    text = "Showing ${displaySheets.size} of ${allSheets.size} months",
+                    text = "Showing ${display_Sheets.size} of ${all_Sheets.size} months",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -219,11 +221,11 @@ fun ChartScreenWithSwipe(
                 ) {
                     Button(
                         onClick = {
-                            if (canSwipeLeft) {
-                                currentIndex = maxOf(currentIndex - 1, 0)
+                            if (canSwipe_Left) {
+                                current_Index = maxOf(current_Index - 1, 0)
                             }
                         },
-                        enabled = canSwipeLeft,
+                        enabled = canSwipe_Left,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         )
@@ -238,11 +240,11 @@ fun ChartScreenWithSwipe(
 
                     Button(
                         onClick = {
-                            if (canSwipeRight) {
-                                currentIndex = minOf(currentIndex + 1, allSheets.size - 4)
+                            if (canSwipe_Right) {
+                                current_Index = minOf(current_Index + 1, all_Sheets.size - 4)
                             }
                         },
-                        enabled = canSwipeRight,
+                        enabled = canSwipe_Right,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         )
@@ -258,13 +260,13 @@ fun ChartScreenWithSwipe(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Legend
+                // Legend - Updated colors
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    LegendItem(color = Color(0xFF4CAF50), label = "Income")
-                    LegendItem(color = Color(0xFFF44336), label = "Expenses")
+                    LegendItem(color = Color(0xFF008F82), label = "Income")
+                    LegendItem(color = Color(0xFFE05780), label = "Expenses")
                 }
             }
         }
@@ -280,7 +282,7 @@ fun SwipeableChart(
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit
 ) {
-    var dragOffset by remember { mutableStateOf(0f) }
+    var drag_Offset by remember { mutableStateOf(0f) }
 
     Box(
         modifier = Modifier
@@ -290,8 +292,8 @@ fun SwipeableChart(
                 detectHorizontalDragGestures(
                     onDragEnd = {
                         // Detect swipe direction based on accumulated drag
-                        if (abs(dragOffset) > 100f) { // Minimum swipe distance
-                            if (dragOffset > 0) {
+                        if (abs(drag_Offset) > 100f) { // Minimum swipe distance
+                            if (drag_Offset > 0) {
                                 // Swiped right - go to previous
                                 onSwipeRight()
                             } else {
@@ -299,13 +301,13 @@ fun SwipeableChart(
                                 onSwipeLeft()
                             }
                         }
-                        dragOffset = 0f
+                        drag_Offset = 0f
                     },
                     onDragCancel = {
-                        dragOffset = 0f
+                        drag_Offset = 0f
                     },
                     onHorizontalDrag = { _, dragAmount ->
-                        dragOffset += dragAmount
+                        drag_Offset += dragAmount
                     }
                 )
             }
@@ -330,178 +332,217 @@ fun CustomLineChart(
             .aspectRatio(1f)
             .padding(16.dp)
     ) {
-        val canvasWidth = size.width
-        val canvasHeight = size.height
+        val canvas_Width = size.width
+        val canvas_Height = size.height
 
-        // Define margins
-        val leftMargin = 60f
-        val rightMargin = 40f
-        val topMargin = 40f
-        val bottomMargin = 60f
+        // Define margins - slightly adjusted for better spacing
+        val left_Margin = 65f
+        val right_Margin = 35f
+        val top_Margin = 45f
+        val bottom_Margin = 65f
 
         // Calculate chart area
-        val chartAreaWidth = canvasWidth - leftMargin - rightMargin
-        val chartAreaHeight = canvasHeight - topMargin - bottomMargin
+        val chart_AreaWidth = canvas_Width - left_Margin - right_Margin
+        val chart_AreaHeight = canvas_Height - top_Margin - bottom_Margin
 
         // Calculate max value for Y-axis scaling
-        val maxIncome = incomeData.maxOrNull() ?: 0.0
-        val maxExpense = expenseData.maxOrNull() ?: 0.0
-        val maxValue = maxOf(maxIncome, maxExpense)
-        val yAxisMax = if (maxValue > 0) {
-            val calculated = maxValue * 1.2
+        val max_Income = incomeData.maxOrNull() ?: 0.0
+        val max_Expense = expenseData.maxOrNull() ?: 0.0
+        val max_Value = maxOf(max_Income, max_Expense)
+        val yAxisMax = if (max_Value > 0) {
+            val calculated = max_Value * 1.25 // Changed from 1.2 to 1.25
             if (calculated < 100) 100.0 else calculated
         } else {
             1000.0
         }
 
-        // Draw Y-axis
+        // Draw Y-axis with rounded cap
         drawLine(
-            color = Color.Black,
-            start = Offset(leftMargin, topMargin),
-            end = Offset(leftMargin, canvasHeight - bottomMargin),
-            strokeWidth = 3f
+            color = Color(0xFF37474F), // Slightly darker color
+            start = Offset(left_Margin, top_Margin),
+            end = Offset(left_Margin, canvas_Height - bottom_Margin),
+            strokeWidth = 3.5f, // Slightly thicker
+            cap = StrokeCap.Round
         )
 
-        // Draw X-axis
+        // Draw X-axis with rounded cap
         drawLine(
-            color = Color.Black,
-            start = Offset(leftMargin, canvasHeight - bottomMargin),
-            end = Offset(canvasWidth - rightMargin, canvasHeight - bottomMargin),
-            strokeWidth = 3f
+            color = Color(0xFF37474F),
+            start = Offset(left_Margin, canvas_Height - bottom_Margin),
+            end = Offset(canvas_Width - right_Margin, canvas_Height - bottom_Margin),
+            strokeWidth = 3.5f,
+            cap = StrokeCap.Round
         )
 
-        // Draw Y-axis labels (amounts)
-        val ySteps = 5
-        for (i in 0..ySteps) {
-            val yValue = (yAxisMax / ySteps) * i
-            val yPos = canvasHeight - bottomMargin - (chartAreaHeight / ySteps * i)
+        // Draw Y-axis labels and grid lines with dashed pattern
+        val y_Steps = 5
+        for (i in 0..y_Steps) {
+            val y_Value = (yAxisMax / y_Steps) * i
+            val y_Pos = canvas_Height - bottom_Margin - (chart_AreaHeight / y_Steps * i)
 
-            // Draw grid line
+            // Draw dashed grid line for unique look
             drawLine(
-                color = Color.LightGray,
-                start = Offset(leftMargin, yPos),
-                end = Offset(canvasWidth - rightMargin, yPos),
-                strokeWidth = 1f
+                color = Color.LightGray.copy(alpha = 0.6f),
+                start = Offset(left_Margin, y_Pos),
+                end = Offset(canvas_Width - right_Margin, y_Pos),
+                strokeWidth = 1.5f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
             )
 
-            // Draw Y-axis label
+            // Draw Y-axis label with shadow effect
             drawIntoCanvas { canvas ->
-                val paint = Paint().apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = 28f
+                val paintt = Paint().apply {
+                    color = android.graphics.Color.parseColor("#1976D2") // Blue shade
+                    textSize = 30f
                     textAlign = Paint.Align.RIGHT
+                    isFakeBoldText = true
                 }
                 canvas.nativeCanvas.drawText(
-                    "€${yValue.toInt()}",
-                    leftMargin - 10f,
-                    yPos + 10f,
-                    paint
+                    "€${y_Value.toInt()}",
+                    left_Margin - 12f,
+                    y_Pos + 8f,
+                    paintt
                 )
             }
         }
 
         // Calculate spacing for X-axis
-        val xSpacing = if (months.size > 1) {
-            chartAreaWidth / (months.size - 1)
+        val x_Spacing = if (months.size > 1) {
+            chart_AreaWidth / (months.size - 1)
         } else {
-            chartAreaWidth / 2
+            chart_AreaWidth / 2
         }
 
-        // Draw X-axis labels (months)
+        // Draw X-axis labels with custom styling
         months.forEachIndexed { index, month ->
-            val xPos = leftMargin + (xSpacing * index)
+            val x_Pos = left_Margin + (x_Spacing * index)
 
+            // Draw small tick mark on X-axis
+            drawLine(
+                color = Color(0xFF37474F),
+                start = Offset(x_Pos, canvas_Height - bottom_Margin),
+                end = Offset(x_Pos, canvas_Height - bottom_Margin + 8f),
+                strokeWidth = 2.5f,
+                cap = StrokeCap.Round
+            )
+
+            // Draw month label
             drawIntoCanvas { canvas ->
-                val paint = Paint().apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = 28f
+                val paintt = Paint().apply {
+                    color = android.graphics.Color.parseColor("#424242")
+                    textSize = 29f
                     textAlign = Paint.Align.CENTER
+                    isFakeBoldText = true
                 }
                 canvas.nativeCanvas.drawText(
                     month,
-                    xPos,
-                    canvasHeight - bottomMargin + 40f,
-                    paint
+                    x_Pos,
+                    canvas_Height - bottom_Margin + 42f,
+                    paintt
                 )
             }
         }
 
-        // Draw Income Line (Green)
+        // Draw Income Line - CHANGED TO TEAL
         if (incomeData.size > 1) {
-            val incomePath = Path()
+            val income_Path = Path()
             incomeData.forEachIndexed { index, value ->
-                val xPos = leftMargin + (xSpacing * index)
-                val yPos = canvasHeight - bottomMargin -
-                        ((value / yAxisMax) * chartAreaHeight).toFloat()
+                val x_Pos = left_Margin + (x_Spacing * index)
+                val y_Pos = canvas_Height - bottom_Margin -
+                        ((value / yAxisMax) * chart_AreaHeight).toFloat()
 
                 if (index == 0) {
-                    incomePath.moveTo(xPos, yPos)
+                    income_Path.moveTo(x_Pos, y_Pos)
                 } else {
-                    incomePath.lineTo(xPos, yPos)
+                    income_Path.lineTo(x_Pos, y_Pos)
                 }
 
+                // Draw larger circles with border for data points
                 drawCircle(
-                    color = Color(0xFF4CAF50),
-                    radius = 8f,
-                    center = Offset(xPos, yPos)
+                    color = Color.White,
+                    radius = 10f,
+                    center = Offset(x_Pos, y_Pos)
+                )
+                drawCircle(
+                    color = Color(0xFF008F82), // Darker teal
+                    radius = 7f,
+                    center = Offset(x_Pos, y_Pos)
                 )
             }
 
+            // Draw thicker line with rounded joins
             drawPath(
-                path = incomePath,
-                color = Color(0xFF4CAF50),
-                style = Stroke(width = 5f)
+                path = income_Path,
+                color = Color(0xFF00B8A9), // Teal/Turquoise
+                style = Stroke(width = 6f, cap = StrokeCap.Round)
             )
         }
 
-        // Draw Expenses Line (Red)
+        // Draw Expenses Line - CHANGED TO PINK
         if (expenseData.size > 1) {
-            val expensePath = Path()
+            val expense_Path = Path()
             expenseData.forEachIndexed { index, value ->
-                val xPos = leftMargin + (xSpacing * index)
-                val yPos = canvasHeight - bottomMargin -
-                        ((value / yAxisMax) * chartAreaHeight).toFloat()
+                val x_Pos = left_Margin + (x_Spacing * index)
+                val y_Pos = canvas_Height - bottom_Margin -
+                        ((value / yAxisMax) * chart_AreaHeight).toFloat()
 
                 if (index == 0) {
-                    expensePath.moveTo(xPos, yPos)
+                    expense_Path.moveTo(x_Pos, y_Pos)
                 } else {
-                    expensePath.lineTo(xPos, yPos)
+                    expense_Path.lineTo(x_Pos, y_Pos)
                 }
 
+                // Draw larger circles with border
                 drawCircle(
-                    color = Color(0xFFF44336),
-                    radius = 8f,
-                    center = Offset(xPos, yPos)
+                    color = Color.White,
+                    radius = 10f,
+                    center = Offset(x_Pos, y_Pos)
+                )
+                drawCircle(
+                    color = Color(0xFFE05780), // Darker pink
+                    radius = 7f,
+                    center = Offset(x_Pos, y_Pos)
                 )
             }
 
+            // Draw thicker line
             drawPath(
-                path = expensePath,
-                color = Color(0xFFF44336),
-                style = Stroke(width = 5f)
+                path = expense_Path,
+                color = Color(0xFFFF6B9D), // Pink/Rose
+                style = Stroke(width = 6f, cap = StrokeCap.Round)
             )
         }
 
-        // Handle single data point case
+        // Handle single data point case with larger markers
         if (incomeData.size == 1) {
-            val xPos = leftMargin + chartAreaWidth / 2
-            val yPos = canvasHeight - bottomMargin -
-                    ((incomeData[0] / yAxisMax) * chartAreaHeight).toFloat()
+            val x_Pos = left_Margin + chart_AreaWidth / 2
+            val y_Pos = canvas_Height - bottom_Margin -
+                    ((incomeData[0] / yAxisMax) * chart_AreaHeight).toFloat()
             drawCircle(
-                color = Color(0xFF4CAF50),
-                radius = 10f,
-                center = Offset(xPos, yPos)
+                color = Color.White,
+                radius = 12f,
+                center = Offset(x_Pos, y_Pos)
+            )
+            drawCircle(
+                color = Color(0xFF00B8A9), // Teal
+                radius = 9f,
+                center = Offset(x_Pos, y_Pos)
             )
         }
 
         if (expenseData.size == 1) {
-            val xPos = leftMargin + chartAreaWidth / 2
-            val yPos = canvasHeight - bottomMargin -
-                    ((expenseData[0] / yAxisMax) * chartAreaHeight).toFloat()
+            val x_Pos = left_Margin + chart_AreaWidth / 2
+            val y_Pos = canvas_Height - bottom_Margin -
+                    ((expenseData[0] / yAxisMax) * chart_AreaHeight).toFloat()
             drawCircle(
-                color = Color(0xFFF44336),
-                radius = 10f,
-                center = Offset(xPos, yPos)
+                color = Color.White,
+                radius = 12f,
+                center = Offset(x_Pos, y_Pos)
+            )
+            drawCircle(
+                color = Color(0xFFFF6B9D), // Pink
+                radius = 9f,
+                center = Offset(x_Pos, y_Pos)
             )
         }
     }

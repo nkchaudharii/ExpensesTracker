@@ -52,19 +52,19 @@ data class ExpenseSheet(
 
 // This object makes sure that each new sheet or expense has a unique ID.
 object IdGenerator {
-    private var currentId = 0
+    private var unique_Id = 0
 
     // Set IDs to the highest value already present in the database.
     fun initializeFromDatabase(dbHelper: DBHelper) {
-        val maxSheetId = dbHelper.getMaxSheetId()
-        val maxExpenseId = dbHelper.getMaxExpenseId()
-        currentId = maxOf(maxSheetId, maxExpenseId)
+        val maxSheet_Id = dbHelper.getMaxSheetId()
+        val maxExpense_Id = dbHelper.getMaxExpenseId()
+        unique_Id = maxOf(maxSheet_Id, maxExpense_Id)
     }
 
     // Provides the subsequent unique ID
     fun generateId(): Int {
-        currentId += 1
-        return currentId
+        unique_Id += 1
+        return unique_Id
     }
 }
 
@@ -178,7 +178,7 @@ fun SheetCard(
     onDelete: () -> Unit = {},
     onEdit: () -> Unit = {}
 ) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    var confirm_Delete by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -214,7 +214,7 @@ fun SheetCard(
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF4CAF50))
                 }
-                IconButton(onClick = { showDeleteDialog = true }) {
+                IconButton(onClick = { confirm_Delete = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
                 }
             }
@@ -232,16 +232,16 @@ fun SheetCard(
     }
 
     // Dialog conformation prior to sheet delection
-    if (showDeleteDialog) {
+    if (confirm_Delete) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { confirm_Delete = false },
             title = { Text("Delete Expense Sheet") },
             text = { Text("Are you sure? All expenses in this sheet will be deleted.") },
             confirmButton = {
                 Button(
                     onClick = {
                         onDelete()
-                        showDeleteDialog = false
+                        confirm_Delete = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -249,7 +249,7 @@ fun SheetCard(
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                OutlinedButton(onClick = { confirm_Delete = false }) { Text("Cancel") }
             }
         )
     }
@@ -264,18 +264,18 @@ fun CreateSheetScreen(
     onBackClick: () -> Unit
 ) {
     // Get the current date to display in the UI
-    val calendar = Calendar.getInstance()
-    val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
-    val currentMonth = calendar.get(Calendar.MONTH) + 1
-    val currentYear = calendar.get(Calendar.YEAR)
+    val calendarr = Calendar.getInstance()
+    val current_Day = calendarr.get(Calendar.DAY_OF_MONTH)
+    val current_Month = calendarr.get(Calendar.MONTH) + 1
+    val current_Year = calendarr.get(Calendar.YEAR)
 
-    val weekday = java.text.SimpleDateFormat("EEEE").format(calendar.time)
-    val monthName = ExpenseSheet(0, currentMonth, currentYear).getMonthName()
-    val formattedDate = "$weekday, %02d $monthName $currentYear".format(currentDay)
+    val week_day = java.text.SimpleDateFormat("EEEE").format(calendarr.time)
+    val month_Name = ExpenseSheet(0, current_Month, current_Year).getMonthName()
+    val formattedDate = "$week_day, %02d $month_Name $current_Year".format(current_Day)
 
-    var selectedMonth by remember { mutableStateOf(currentMonth) }
-    var yearInput by remember { mutableStateOf(currentYear.toString()) }
-    var errorMessage by remember { mutableStateOf("") }
+    var selected_Month by remember { mutableStateOf(current_Month) }
+    var year_Input by remember { mutableStateOf(current_Year.toString()) }
+    var error_Message by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -314,15 +314,15 @@ fun CreateSheetScreen(
             // The entry field for month
             Text("Enter Month (1-12)", fontWeight = FontWeight.Bold)
             OutlinedTextField(
-                value = if (selectedMonth == 0) "" else selectedMonth.toString(),
+                value = if (selected_Month == 0) "" else selected_Month.toString(),
                 onValueChange = {
                     val month = it.toIntOrNull()
                     if (month != null && month in 1..12) {
-                        selectedMonth = month
-                        errorMessage = ""
+                        selected_Month = month
+                        error_Message = ""
                     } else if (it.isEmpty()) {
-                        selectedMonth = 0
-                        errorMessage = ""
+                        selected_Month = 0
+                        error_Message = ""
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -334,17 +334,17 @@ fun CreateSheetScreen(
             // The entry filed for year
             Text("Enter Year", fontWeight = FontWeight.Bold)
             OutlinedTextField(
-                value = yearInput,
-                onValueChange = { yearInput = it; errorMessage = "" },
+                value = year_Input,
+                onValueChange = { year_Input = it; error_Message = "" },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = errorMessage.isNotEmpty(),
+                isError = error_Message.isNotEmpty(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
             // Display message validation
-            if (errorMessage.isNotEmpty()) {
-                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            if (error_Message.isNotEmpty()) {
+                Text(error_Message, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -352,27 +352,27 @@ fun CreateSheetScreen(
             // Add a button at the bottom
             Button(
                 onClick = {
-                    if (selectedMonth == 0 || selectedMonth !in 1..12) {
-                        errorMessage = "Enter a valid month (1-12)"
+                    if (selected_Month == 0 || selected_Month !in 1..12) {
+                        error_Message = "Enter a valid month (1-12)"
                         return@Button
                     }
-                    val year = yearInput.toIntOrNull()
-                    if (year == null) {
-                        errorMessage = "Enter a valid year"
+                    val yearr = year_Input.toIntOrNull()
+                    if (yearr == null) {
+                        error_Message = "Enter a valid year"
                         return@Button
                     }
 
                     // Check for duplicate sheet
-                    val duplicate = existingSheets.any {
-                        it.month == selectedMonth && it.year == year
+                    val duplicatee = existingSheets.any {
+                        it.month == selected_Month && it.year == yearr
                     }
 
-                    if (duplicate) {
-                        errorMessage = "A sheet for ${ExpenseSheet(0, selectedMonth, year).getMonthName()} $year already exists"
+                    if (duplicatee) {
+                        error_Message = "A sheet for ${ExpenseSheet(0, selected_Month, yearr).getMonthName()} $yearr already exists"
                         return@Button
                     }
 
-                    onSheetCreated(ExpenseSheet(IdGenerator.generateId(), selectedMonth, year))
+                    onSheetCreated(ExpenseSheet(IdGenerator.generateId(), selected_Month, yearr))
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) { Text("Create Sheet") }
@@ -390,9 +390,9 @@ fun EditSheetScreen(
     onSheetUpdated: (ExpenseSheet) -> Unit,
     onBackClick: () -> Unit
 ) {
-    var selectedMonth by remember { mutableStateOf(sheet.month) }
-    var yearInput by remember { mutableStateOf(sheet.year.toString()) }
-    var errorMessage by remember { mutableStateOf("") }
+    var selected_Month by remember { mutableStateOf(sheet.month) }
+    var year_Input by remember { mutableStateOf(sheet.year.toString()) }
+    var error_Message by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -431,15 +431,15 @@ fun EditSheetScreen(
             // Month input field
             Text("Enter Month (1-12)", fontWeight = FontWeight.Bold)
             OutlinedTextField(
-                value = if (selectedMonth == 0) "" else selectedMonth.toString(),
+                value = if (selected_Month == 0) "" else selected_Month.toString(),
                 onValueChange = {
                     val month = it.toIntOrNull()
                     if (month != null && month in 1..12) {
-                        selectedMonth = month
-                        errorMessage = ""
+                        selected_Month = month
+                        error_Message = ""
                     } else if (it.isEmpty()) {
-                        selectedMonth = 0
-                        errorMessage = ""
+                        selected_Month = 0
+                        error_Message = ""
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -451,16 +451,16 @@ fun EditSheetScreen(
             // Year input field
             Text("Enter Year", fontWeight = FontWeight.Bold)
             OutlinedTextField(
-                value = yearInput,
-                onValueChange = { yearInput = it; errorMessage = "" },
+                value = year_Input,
+                onValueChange = { year_Input = it; error_Message = "" },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = errorMessage.isNotEmpty(),
+                isError = error_Message.isNotEmpty(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
-            if (errorMessage.isNotEmpty()) {
-                Text(errorMessage, color = MaterialTheme.colorScheme.error)
+            if (error_Message.isNotEmpty()) {
+                Text(error_Message, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(modifier = Modifier.weight(1f))
@@ -468,29 +468,29 @@ fun EditSheetScreen(
             // The button to store updated information
             Button(
                 onClick = {
-                    if (selectedMonth == 0 || selectedMonth !in 1..12) {
-                        errorMessage = "Enter a valid month (1-12)"
+                    if (selected_Month == 0 || selected_Month !in 1..12) {
+                        error_Message = "Enter a valid month (1-12)"
                         return@Button
                     }
-                    val year = yearInput.toIntOrNull()
+                    val year = year_Input.toIntOrNull()
                     if (year == null) {
-                        errorMessage = "Enter a valid year"
+                        error_Message = "Enter a valid year"
                         return@Button
                     }
 
                     // Check if updating would create a duplicate (excluding current sheet)
                     val duplicate = existingSheets.any {
                         it.id != sheet.id &&
-                                it.month == selectedMonth &&
+                                it.month == selected_Month &&
                                 it.year == year
                     }
 
                     if (duplicate) {
-                        errorMessage = "A sheet for ${ExpenseSheet(0, selectedMonth, year).getMonthName()} $year already exists"
+                        error_Message = "A sheet for ${ExpenseSheet(0, selected_Month, year).getMonthName()} $year already exists"
                         return@Button
                     }
 
-                    onSheetUpdated(sheet.copy(month = selectedMonth, year = year))
+                    onSheetUpdated(sheet.copy(month = selected_Month, year = year))
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) { Text("Update Sheet") }
@@ -502,32 +502,32 @@ fun EditSheetScreen(
 // Simple dropdown menu that lets the user choose a month name
 @Composable
 fun MonthDropdown(selectedMonth: Int, onMonthSelected: (Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val months = listOf(
+    var menu_expanded by remember { mutableStateOf(false) }
+    val all_months = listOf(
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     )
 
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedButton(
-            onClick = { expanded = true },
+            onClick = { menu_expanded = true },
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(months[selectedMonth - 1], color = Color.Black)
+                Text(all_months[selectedMonth - 1], color = Color.Black)
                 Text("▼", color = Color.Black)
             }
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            months.forEachIndexed { index, month ->
+        DropdownMenu(expanded = menu_expanded, onDismissRequest = { menu_expanded= false }) {
+            all_months.forEachIndexed { index, month ->
                 DropdownMenuItem(
                     text = { Text(month) },
                     onClick = {
-                        expanded = false
+                        menu_expanded = false
                         onMonthSelected(index + 1)
                     }
                 )
@@ -547,10 +547,10 @@ fun MonthDetailScreen(
     onExpenseUpdated: (Expense) -> Unit,
     onExpenseDeleted: (Expense) -> Unit
 ) {
-    var isEditingIncome by remember { mutableStateOf(false) }
-    var incomeInput by remember { mutableStateOf(sheet.income.toString()) }
-    var incomeError by remember { mutableStateOf("") }
-    var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var is_Editing_Income by remember { mutableStateOf(false) }
+    var income_Input by remember { mutableStateOf(sheet.income.toString()) }
+    var income_Error by remember { mutableStateOf("") }
+    var show_AddExpenseDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -572,7 +572,7 @@ fun MonthDetailScreen(
         // To add a new expense, use the floating button.
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { showAddExpenseDialog = true },
+                onClick = { show_AddExpenseDialog = true },
                 containerColor = Color(0xFF4CAF50),
                 contentColor = Color.White,
                 icon = {
@@ -596,18 +596,18 @@ fun MonthDetailScreen(
                     Text("Monthly Income")
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    if (isEditingIncome) {
+                    if (is_Editing_Income) {
                         OutlinedTextField(
-                            value = incomeInput,
-                            onValueChange = { incomeInput = it; incomeError = "" },
+                            value = income_Input,
+                            onValueChange = { income_Input = it; income_Error = "" },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            isError = incomeError.isNotEmpty(),
+                            isError = income_Error.isNotEmpty(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
 
-                        if (incomeError.isNotEmpty()) {
-                            Text(incomeError, color = MaterialTheme.colorScheme.error)
+                        if (income_Error.isNotEmpty()) {
+                            Text(income_Error, color = MaterialTheme.colorScheme.error)
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -616,23 +616,23 @@ fun MonthDetailScreen(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
-                                    val newIncome = incomeInput.toDoubleOrNull()
-                                    if (incomeInput.isEmpty()) {
-                                        incomeError = "Income cannot be empty"; return@Button
+                                    val newIncome = income_Input.toDoubleOrNull()
+                                    if (income_Input.isEmpty()) {
+                                        income_Error = "Income cannot be empty"; return@Button
                                     }
                                     if (newIncome == null || newIncome < 0) {
-                                        incomeError = "Enter valid income"; return@Button
+                                        income_Error = "Enter valid income"; return@Button
                                     }
                                     onIncomeUpdated(newIncome)
-                                    isEditingIncome = false
+                                    is_Editing_Income = false
                                 },
                                 modifier = Modifier.weight(1f)
                             ) { Text("Save") }
 
                             OutlinedButton(
                                 onClick = {
-                                    incomeInput = sheet.income.toString()
-                                    isEditingIncome = false
+                                    income_Input = sheet.income.toString()
+                                    is_Editing_Income = false
                                 },
                                 modifier = Modifier.weight(1f)
                             ) { Text("Cancel") }
@@ -645,7 +645,7 @@ fun MonthDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("€%.2f".format(sheet.income), fontWeight = FontWeight.Bold)
-                            OutlinedButton(onClick = { isEditingIncome = true }) {
+                            OutlinedButton(onClick = { is_Editing_Income = true }) {
                                 Text("Edit")
                             }
                         }
@@ -712,13 +712,13 @@ fun MonthDetailScreen(
         }
 
         //Adds a new expense entry by opening a dialogue.
-        if (showAddExpenseDialog) {
+        if (show_AddExpenseDialog) {
             AddExpenseDialog(
                 onExpenseAdded = { description, amount, date ->
                     onExpenseAdded(description, amount, date)
-                    showAddExpenseDialog = false
+                    show_AddExpenseDialog = false
                 },
-                onDismiss = { showAddExpenseDialog = false }
+                onDismiss = { show_AddExpenseDialog = false }
             )
         }
     }
@@ -732,8 +732,8 @@ fun ExpenseItem(
     onEdit: (Expense) -> Unit,
     onDelete: (Expense) -> Unit
 ) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
+    var show_DeleteDialog by remember { mutableStateOf(false) }
+    var show_EditDialog by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
         Row(
@@ -748,10 +748,10 @@ fun ExpenseItem(
             Text("€%.2f".format(expense.amount), fontWeight = FontWeight.Bold)
 
             Column {
-                IconButton(onClick = { showEditDialog = true }) {
+                IconButton(onClick = { show_EditDialog = true }) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = { showDeleteDialog = true }) {
+                IconButton(onClick = { show_DeleteDialog = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -759,30 +759,30 @@ fun ExpenseItem(
     }
 
     // Before removing an expense, confirm
-    if (showDeleteDialog) {
+    if (show_DeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { show_DeleteDialog = false },
             title = { Text("Delete Expense") },
             text = { Text("Are you sure you want to delete '${expense.description}'?") },
             confirmButton = {
                 Button(
                     onClick = {
                         onDelete(expense)
-                        showDeleteDialog = false
+                        show_DeleteDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Delete") }
             },
-            dismissButton = { OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
+            dismissButton = { OutlinedButton(onClick = { show_DeleteDialog = false }) { Text("Cancel") } }
         )
     }
 
     // Clicking the edit icon opens the edit dialogue.
-    if (showEditDialog) {
+    if (show_EditDialog) {
         EditExpenseDialog(
             expense = expense,
-            onExpenseUpdated = { onEdit(it); showEditDialog = false },
-            onDismiss = { showEditDialog = false }
+            onExpenseUpdated = { onEdit(it); show_EditDialog = false },
+            onDismiss = { show_EditDialog = false }
         )
     }
 }
@@ -795,13 +795,13 @@ fun EditExpenseDialog(
     onExpenseUpdated: (Expense) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var description by remember { mutableStateOf(expense.description) }
-    var amount by remember { mutableStateOf(expense.amount.toString()) }
-    var date by remember { mutableStateOf(expense.date) }
+    var exp_description by remember { mutableStateOf(expense.description) }
+    var exp_amount by remember { mutableStateOf(expense.amount.toString()) }
+    var exp_date by remember { mutableStateOf(expense.date) }
 
-    var descriptionError by remember { mutableStateOf("") }
-    var amountError by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf("") }
+    var descErr by remember { mutableStateOf("") }
+    var amtErr by remember { mutableStateOf("") }
+    var dateErr by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -809,43 +809,43 @@ fun EditExpenseDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it; descriptionError = "" },
+                    value = exp_description,
+                    onValueChange = { exp_description = it; descErr = "" },
                     label = { Text("Description") },
-                    isError = descriptionError.isNotEmpty()
+                    isError = descErr.isNotEmpty()
                 )
-                if (descriptionError.isNotEmpty())
-                    Text(descriptionError, color = MaterialTheme.colorScheme.error)
+                if (descErr.isNotEmpty())
+                    Text(descErr, color = MaterialTheme.colorScheme.error)
 
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it; amountError = "" },
+                    value = exp_amount,
+                    onValueChange = { exp_amount = it; amtErr = "" },
                     label = { Text("Amount") },
-                    isError = amountError.isNotEmpty(),
+                    isError = amtErr.isNotEmpty(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
-                if (amountError.isNotEmpty())
-                    Text(amountError, color = MaterialTheme.colorScheme.error)
+                if (amtErr.isNotEmpty())
+                    Text(amtErr, color = MaterialTheme.colorScheme.error)
 
                 OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it; dateError = "" },
+                    value = exp_date,
+                    onValueChange = { exp_date = it; dateErr = "" },
                     label = { Text("Date") },
-                    isError = dateError.isNotEmpty()
+                    isError = dateErr.isNotEmpty()
                 )
-                if (dateError.isNotEmpty())
-                    Text(dateError, color = MaterialTheme.colorScheme.error)
+                if (dateErr.isNotEmpty())
+                    Text(dateErr, color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (description.isEmpty()) { descriptionError = "Required"; return@Button }
-                    val newAmount = amount.toDoubleOrNull()
-                    if (newAmount == null || newAmount <= 0) { amountError = "Invalid"; return@Button }
-                    if (date.isEmpty()) { dateError = "Required"; return@Button }
+                    if (descErr.isEmpty()) { descErr = "Required"; return@Button }
+                    val newAmount = exp_amount.toDoubleOrNull()
+                    if (newAmount == null || newAmount <= 0) { amtErr = "Invalid"; return@Button }
+                    if (exp_date.isEmpty()) { dateErr = "Required"; return@Button }
 
-                    onExpenseUpdated(expense.copy(description = description, amount = newAmount, date = date))
+                    onExpenseUpdated(expense.copy(description = descErr, amount = newAmount, date = exp_date))
                 }
             ) { Text("Update") }
         },
@@ -867,12 +867,12 @@ fun AddExpenseDialog(
         calendar.get(java.util.Calendar.YEAR)
     )
 
-    var description by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(defaultDate) }
+    var exp_description by remember { mutableStateOf("") }
+    var exp_amount by remember { mutableStateOf("") }
+    var exp_date by remember { mutableStateOf(defaultDate) }
 
-    var descriptionError by remember { mutableStateOf("") }
-    var amountError by remember { mutableStateOf("") }
+    var descErr by remember { mutableStateOf("") }
+    var amtErr by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -880,23 +880,23 @@ fun AddExpenseDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it; descriptionError = "" },
+                    value = exp_description,
+                    onValueChange = { exp_description = it; descErr = "" },
                     label = { Text("Description") },
-                    isError = descriptionError.isNotEmpty()
+                    isError = descErr.isNotEmpty()
                 )
 
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it; amountError = "" },
+                    value = exp_amount,
+                    onValueChange = { exp_amount = it; amtErr = "" },
                     label = { Text("Amount") },
-                    isError = amountError.isNotEmpty(),
+                    isError = amtErr.isNotEmpty(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
 
                 OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
+                    value = exp_date,
+                    onValueChange = { exp_date = it },
                     label = { Text("Date") }
                 )
             }
@@ -904,18 +904,18 @@ fun AddExpenseDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (description.isEmpty()) {
-                        descriptionError = "Required"
+                    if (exp_description.isEmpty()) {
+                        descErr = "Required"
                         return@Button
                     }
 
-                    val amountValue = amount.toDoubleOrNull()
+                    val amountValue = exp_amount.toDoubleOrNull()
                     if (amountValue == null || amountValue <= 0) {
-                        amountError = "Invalid"
+                        amtErr = "Invalid"
                         return@Button
                     }
 
-                    onExpenseAdded(description, amountValue, date)
+                    onExpenseAdded(exp_description, amountValue, exp_date)
                 }
             ) {
                 Text("Add")
