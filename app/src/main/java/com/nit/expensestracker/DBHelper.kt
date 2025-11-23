@@ -6,20 +6,24 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
+// Database Helper Class
+/* This module handles all SQLite persistence activities involving sheets and expenses such as
+record insertion, modification, queries and deletion */
 class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
+    // Table & Column Names
+    /* This section defines the entire list of identifiers of tables and column
+    attributes that are used in sheet and expense fields */
     companion object {
         private const val DATABASE_NAME = "ExpensesTracker.db"
         private const val DATABASE_VERSION = 1
 
-        // Table for expense sheets
         private const val TABLE_SHEETS = "expense_sheets"
         private const val COLUMN_SHEET_ID = "id"
         private const val COLUMN_MONTH = "month"
         private const val COLUMN_YEAR = "year"
         private const val COLUMN_INCOME = "income"
 
-        // Table for individual expenses
         private const val TABLE_EXPENSES = "expenses"
         private const val COLUMN_EXPENSE_ID = "id"
         private const val COLUMN_SHEET_ID_FK = "sheet_id"
@@ -28,8 +32,9 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         private const val COLUMN_DATE = "date"
     }
 
+    // Database Creation
+    /* It creates the necessary tables on the first creation of the database.   */
     override fun onCreate(mydb: SQLiteDatabase?) {
-        // Create expense sheets table
         val create_Sheets_Table = """
             CREATE TABLE $TABLE_SHEETS (
                 $COLUMN_SHEET_ID INTEGER PRIMARY KEY,
@@ -39,7 +44,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             )
         """.trimIndent()
 
-        // Create expenses table with foreign key to sheets
         val create_Expenses_Table = """
             CREATE TABLE $TABLE_EXPENSES (
                 $COLUMN_EXPENSE_ID INTEGER PRIMARY KEY,
@@ -55,40 +59,49 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         mydb?.execSQL(create_Expenses_Table)
     }
 
+    // Database Upgrade Handling
+    /* It uses reset policy to deletes and reinvents tables when there are changes in version */
+
     override fun onUpgrade(mydb: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
         mydb?.execSQL("DROP TABLE IF EXISTS $TABLE_EXPENSES")
         mydb?.execSQL("DROP TABLE IF EXISTS $TABLE_SHEETS")
         onCreate(mydb)
     }
 
-    // Enable foreign key constraints
+    // Foreign Key Configuration
+    /* It sets up cascading delete to have referential integrity between sheets and expenses */
+
     override fun onConfigure(mydb: SQLiteDatabase?) {
         super.onConfigure(mydb)
         mydb?.setForeignKeyConstraintsEnabled(true)
     }
 
-    // ========== EXPENSE SHEET OPERATIONS ==========
 
-    // Insert a new expense sheet
+    // Expense Sheet Operations
+    /* It provides Create, Retrieve, Update and Delete functions to maintain
+    monthly expense sheets incorporated in the sheets table.  */
     fun insertSheet(sheet: ExpenseSheet): Long {
         val mydb = writableDatabase
+
         val values = ContentValues().apply {
             put(COLUMN_SHEET_ID, sheet.id)
             put(COLUMN_MONTH, sheet.month)
             put(COLUMN_YEAR, sheet.year)
             put(COLUMN_INCOME, sheet.income)
         }
+
         return mydb.insert(TABLE_SHEETS, null, values)
     }
 
-    // Update an existing expense sheet
     fun updateSheet(sheet: ExpenseSheet): Int {
         val mydb = writableDatabase
+
         val values = ContentValues().apply {
             put(COLUMN_MONTH, sheet.month)
             put(COLUMN_YEAR, sheet.year)
             put(COLUMN_INCOME, sheet.income)
         }
+
         return mydb.update(
             TABLE_SHEETS,
             values,
@@ -97,12 +110,13 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
     }
 
-    // Update only the income for a sheet
     fun updateSheetIncome(sheetId: Int, income: Double): Int {
         val mydb = writableDatabase
+
         val values = ContentValues().apply {
             put(COLUMN_INCOME, income)
         }
+
         return mydb.update(
             TABLE_SHEETS,
             values,
@@ -111,9 +125,9 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
     }
 
-    // Delete an expense sheet (will also delete associated expenses due to CASCADE)
     fun deleteSheet(sheetId: Int): Int {
         val mydb = writableDatabase
+
         return mydb.delete(
             TABLE_SHEETS,
             "$COLUMN_SHEET_ID = ?",
@@ -121,10 +135,13 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
     }
 
-    // Get all expense sheets
+    // Query Helpers
+    /* It has surfaces, which access correlated information example- all expenditures
+    used on a given sheet or an individual expenditure record */
     fun getAllSheets(): List<ExpenseSheet> {
         val all_sheets = mutableListOf<ExpenseSheet>()
         val mydb = readableDatabase
+
         val cursorr: Cursor = mydb.query(
             TABLE_SHEETS,
             null,
@@ -142,7 +159,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 val yearr = getInt(getColumnIndexOrThrow(COLUMN_YEAR))
                 val incomee = getDouble(getColumnIndexOrThrow(COLUMN_INCOME))
 
-                // Get expenses for this sheet
                 val expense_List = getExpensesForSheet(sheet_Id)
 
                 all_sheets.add(
@@ -156,13 +172,14 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 )
             }
         }
+
         cursorr.close()
         return all_sheets
     }
 
-    // Get a single sheet by ID
     fun getSheetById(sheetId: Int): ExpenseSheet? {
         val mydb = readableDatabase
+
         val cursorr: Cursor = mydb.query(
             TABLE_SHEETS,
             null,
@@ -174,6 +191,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
 
         var all_sheet: ExpenseSheet? = null
+
         with(cursorr) {
             if (moveToFirst()) {
                 val idd = getInt(getColumnIndexOrThrow(COLUMN_SHEET_ID))
@@ -181,7 +199,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 val yearr = getInt(getColumnIndexOrThrow(COLUMN_YEAR))
                 val incomee = getDouble(getColumnIndexOrThrow(COLUMN_INCOME))
 
-                // Get expenses for this sheet
                 val expense_List = getExpensesForSheet(idd)
 
                 all_sheet = ExpenseSheet(
@@ -193,15 +210,17 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 )
             }
         }
+
         cursorr.close()
         return all_sheet
     }
 
-    // ========== EXPENSE OPERATIONS ==========
 
-    // Insert a new expense
+    // Expense Operation
+    /* It gives CRUD functions of managing individual expenses of a given sheet */
     fun insertExpense(sheetId: Int, expense: Expense): Long {
         val mydb = writableDatabase
+
         val values = ContentValues().apply {
             put(COLUMN_EXPENSE_ID, expense.id)
             put(COLUMN_SHEET_ID_FK, sheetId)
@@ -209,17 +228,19 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             put(COLUMN_AMOUNT, expense.amount)
             put(COLUMN_DATE, expense.date)
         }
+
         return mydb.insert(TABLE_EXPENSES, null, values)
     }
 
-    // Update an existing expense
     fun updateExpense(expense: Expense): Int {
         val mydb = writableDatabase
+
         val values = ContentValues().apply {
             put(COLUMN_DESCRIPTION, expense.description)
             put(COLUMN_AMOUNT, expense.amount)
             put(COLUMN_DATE, expense.date)
         }
+
         return mydb.update(
             TABLE_EXPENSES,
             values,
@@ -228,9 +249,9 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
     }
 
-    // Delete an expense
     fun deleteExpense(expenseId: Int): Int {
         val mydb = writableDatabase
+
         return mydb.delete(
             TABLE_EXPENSES,
             "$COLUMN_EXPENSE_ID = ?",
@@ -238,10 +259,13 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
     }
 
-    // Get all expenses for a specific sheet
+    // Query Helpers
+    /* It has surfaces, which access correlated information example- all expenditures
+    used on a given sheet or an individual expenditure record */
     fun getExpensesForSheet(sheetId: Int): List<Expense> {
         val expense_List = mutableListOf<Expense>()
         val mydb = readableDatabase
+
         val cursorr: Cursor = mydb.query(
             TABLE_EXPENSES,
             null,
@@ -269,13 +293,14 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 )
             }
         }
+
         cursorr.close()
         return expense_List
     }
 
-    // Get a single expense by ID
     fun getExpenseById(expenseId: Int): Expense? {
         val mydb = readableDatabase
+
         val cursorr: Cursor = mydb.query(
             TABLE_EXPENSES,
             null,
@@ -287,6 +312,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         )
 
         var expensee: Expense? = null
+
         with(cursorr) {
             if (moveToFirst()) {
                 val idd = getInt(getColumnIndexOrThrow(COLUMN_EXPENSE_ID))
@@ -302,32 +328,39 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
                 )
             }
         }
+
         cursorr.close()
         return expensee
     }
 
-    // ========== UTILITY OPERATIONS ==========
 
-    // Get the maximum ID used for sheets (for ID generation)
+    // ========== UTILITY OPERATIONS ==========
+    /* This segment reads the maximum existing identifiers in the database
+    to help in the creation of unique IDs. */
     fun getMaxSheetId(): Int {
         val mydb = readableDatabase
         val cursorr = mydb.rawQuery("SELECT MAX($COLUMN_SHEET_ID) FROM $TABLE_SHEETS", null)
+
         var maxxId = 0
+
         if (cursorr.moveToFirst()) {
             maxxId = cursorr.getInt(0)
         }
+
         cursorr.close()
         return maxxId
     }
 
-    // Get the maximum ID used for expenses (for ID generation)
     fun getMaxExpenseId(): Int {
         val mydb = readableDatabase
         val cursorr = mydb.rawQuery("SELECT MAX($COLUMN_EXPENSE_ID) FROM $TABLE_EXPENSES", null)
+
         var maxxId = 0
+
         if (cursorr.moveToFirst()) {
             maxxId = cursorr.getInt(0)
         }
+
         cursorr.close()
         return maxxId
     }
